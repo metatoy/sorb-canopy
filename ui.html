@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 12px; }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: #1a1a1a; overflow-x: hidden; }
+
+      /* ── toolbar ────────────────────────────────────────────────────── */
+      .toolbar {
+        display: flex; align-items: center; justify-content: space-between;
+        background: #2d2d2d; padding: 5px 8px;
+        border-bottom: 1px solid #1a1a1a;
+        width: 100%; overflow: hidden;
+      }
+      .tb-group { display: flex; align-items: center; gap: 1px; flex-shrink: 0; }
+      .tb-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 26px; height: 26px; border: 0; border-radius: 5px;
+        background: transparent; color: #ffffff; cursor: pointer; padding: 0;
+        position: relative; flex-shrink: 0;
+      }
+      .tb-btn svg { display: block; pointer-events: none; }
+      .tb-btn:hover { background: #3d3d3d; color: #7dd3fc; }
+      .tb-btn:active { background: #4d4d4d; color: #38bdf8; }
+      .tb-btn.active { background: #1e3a5f; color: #7dd3fc; }
+      .tb-btn[disabled] { opacity: 0.3; cursor: default; }
+      .tb-btn[disabled]:hover { background: transparent; color: #ffffff; }
+      /* tooltip — clipped by parent overflow:hidden, so use fixed positioning trick */
+      .tb-btn::after {
+        content: attr(data-tip); pointer-events: none; opacity: 0;
+        position: fixed; top: auto; left: auto;
+        margin-top: 31px;
+        background: #1a1a1a; color: #fff; font-size: 10px; white-space: nowrap;
+        padding: 3px 6px; border-radius: 4px; z-index: 9999;
+        transition: opacity 0.15s;
+      }
+      .tb-btn:hover::after { opacity: 1; }
+      .tb-divider { width: 1px; height: 16px; background: #444; margin: 0 2px; flex-shrink: 0; }
+
+      /* ── views ─────────────────────────────────────────────────────── */
+      .view { display: none; padding: 14px; }
+      .view.active { display: block; }
+
+      /* ── settings note ────────────────────────────────────────────── */
+      .settings-note { font-size: 11px; color: #888; margin: 0 0 12px; line-height: 1.5; }
+
+      label { display: block; font-weight: 600; margin: 10px 0 4px; }
+      label:first-child { margin-top: 0; }
+      input, textarea, select {
+        width: 100%; border: 1px solid #d9d9d9;
+        border-radius: 6px; padding: 7px 8px; font-size: 12px; font-family: inherit;
+      }
+      textarea { height: 230px; font-family: ui-monospace, Menlo, monospace; resize: vertical; }
+      .row { display: flex; gap: 8px; margin-top: 12px; }
+      button {
+        flex: 1; border: 0; border-radius: 6px; padding: 9px 12px; font-size: 12px;
+        font-weight: 600; cursor: pointer;
+      }
+      .primary { background: #16a34a; color: #fff; }
+      .secondary { background: #eee; color: #1a1a1a; }
+      .status { margin-top: 10px; font-size: 11px; min-height: 15px; color: #555; }
+      .status a { color: #16a34a; }
+      .status.err { color: #c0341d; }
+      .hint { color: #888; font-weight: 400; font-size: 11px; }
+
+      /* ── storybook table view ──────────────────────────────────────── */
+      .sb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .sb-refresh { flex: 0 0 30px; padding: 7px 6px; }
+      .sb-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 8px; }
+      .sb-filters[hidden] { display: none; }
+      .sb-chip {
+        font-size: 10px; padding: 3px 9px; border-radius: 11px; border: 1px solid #d9d9d9;
+        background: #fff; color: #555; cursor: pointer; user-select: none; flex: 0 0 auto;
+      }
+      .sb-chip.active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+      .sb-table-wrap { max-height: 340px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+      .sb-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      .sb-table th {
+        position: sticky; top: 0; background: #f5f5f5; text-align: left; font-weight: 600;
+        padding: 6px 8px; border-bottom: 1px solid #e0e0e0; color: #666; z-index: 1;
+      }
+      .sb-table td { padding: 4px 8px; border-bottom: 1px solid #f2f2f2; vertical-align: middle; }
+      .sb-table tbody tr:hover { background: #fafafa; }
+      .sb-table input[type=checkbox] { width: auto; margin: 0; cursor: pointer; }
+      .sb-col-check { width: 22px; } .sb-col-prev { width: 40px; } .sb-col-action { width: 56px; }
+      .sb-col-comp[hidden], td.sb-col-comp[hidden] { display: none; }
+      .sb-prev {
+        width: 30px; height: 30px; border-radius: 5px; display: flex; align-items: center;
+        justify-content: center; color: #fff; font-weight: 700; font-size: 12px;
+      }
+      .sb-row-insert {
+        font-size: 10px; padding: 4px 7px; background: #eee; color: #1a1a1a;
+        border-radius: 5px; width: 100%;
+      }
+      .sb-bulk {
+        display: flex; align-items: center; gap: 6px; margin-top: 10px;
+        padding: 8px; background: #f0f6ff; border: 1px solid #cfe0f5; border-radius: 6px;
+      }
+      .sb-bulk[hidden] { display: none; }
+      .sb-bulk-count { font-size: 11px; font-weight: 600; color: #1e3a5f; margin-right: auto; }
+      .sb-bulk button { flex: 0 0 auto; padding: 6px 9px; font-size: 11px; }
+      .sb-progress { margin-top: 8px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+      .sb-progress[hidden] { display: none; }
+      .sb-progress-bar { height: 100%; width: 0; background: #16a34a; transition: width 0.15s; }
+      .sb-empty { padding: 20px; text-align: center; color: #888; font-size: 11px; line-height: 1.6; }
+      .sb-check { display: flex; align-items: center; gap: 6px; font-weight: 600; margin: 10px 0 4px; }
+      .sb-check input { width: auto; margin: 0; cursor: pointer; }
+
+      /* ── tokens table view ── */
+      .tk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .tk-head > label { margin: 0; }
+      .tk-head .tk-head-right { display: flex; align-items: center; gap: 8px; }
+      .tk-raw-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; flex: 0 0 28px; padding: 0;
+        border: 1px solid #d9d9d9; border-radius: 5px;
+        background: #fff; color: #555; cursor: pointer;
+      }
+      .tk-raw-btn svg { display: block; pointer-events: none; }
+      .tk-raw-btn:hover { background: #f0f0f0; }
+      .tk-raw-btn.active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+      .tk-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 8px; }
+      .tk-filters[hidden] { display: none; }
+      .tk-chip {
+        font-size: 10px; padding: 3px 9px; border-radius: 11px; border: 1px solid #d9d9d9;
+        background: #fff; color: #555; cursor: pointer; user-select: none; flex: 0 0 auto;
+      }
+      .tk-chip.active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+      .tk-table-wrap { max-height: 340px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; margin-top: 8px; }
+      .tk-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+      .tk-table th {
+        position: sticky; top: 0; background: #f5f5f5; text-align: left; font-weight: 600;
+        padding: 6px 8px; border-bottom: 1px solid #e0e0e0; color: #666; z-index: 1;
+      }
+      .tk-table td { padding: 4px 8px; border-bottom: 1px solid #f2f2f2; vertical-align: middle; }
+      .tk-table tbody tr:hover { background: #fafafa; }
+      .tk-col-icon { width: 30px; }
+      .tk-col-action { width: 30px; }
+      .tk-swatch {
+        width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.15);
+        display: block;
+      }
+      .tk-glyph {
+        width: 18px; height: 18px; border-radius: 4px; background: #e9ecef; color: #868e96;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .tk-glyph svg { display: block; width: 12px; height: 12px; }
+      .tk-val {
+        width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+        padding: 3px 6px; border: 1px solid #d9d9d9; border-radius: 5px;
+      }
+      .tk-val.invalid { border-color: #c0341d; }
+      .tk-name {
+        font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+      }
+      .tk-del {
+        width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px;
+        background: transparent; color: #999; font-size: 13px; line-height: 1; cursor: pointer; flex: 0 0 auto;
+      }
+      .tk-del:hover { color: #c0341d; }
+      .tk-empty { padding: 20px; text-align: center; color: #888; font-size: 11px; line-height: 1.6; }
+      .tk-rawwrap { margin-top: 8px; }
+      .tk-rawwrap[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+
+    <!-- ── TOOLBAR (always visible) ──────────────────────────────────── -->
+    <div class="toolbar">
+
+      <!-- left: view tabs -->
+      <div class="tb-group">
+        <button class="tb-btn active" id="tb-nav-tokens" data-tip="Tokens">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.114 8.063V7.9c1.005-.102 1.497-.615 1.497-1.6V4.503c0-1.094.39-1.538 1.354-1.538h.273V2h-.376C2.25 2 1.49 2.759 1.49 4.352v1.524c0 1.094-.376 1.456-1.49 1.456v1.299c1.114 0 1.49.362 1.49 1.456v1.524c0 1.593.759 2.352 2.372 2.352h.376v-.964h-.273c-.964 0-1.354-.444-1.354-1.538V9.663c0-.984-.492-1.497-1.497-1.6M14.886 7.9v.164c-1.005.103-1.497.616-1.497 1.6v1.798c0 1.094-.39 1.538-1.354 1.538h-.273v.964h.376c1.613 0 2.372-.759 2.372-2.352v-1.524c0-1.094.376-1.456 1.49-1.456v-1.3c-1.114 0-1.49-.362-1.49-1.456V4.352C14.51 2.759 13.75 2 12.138 2h-.376v.964h.273c.964 0 1.354.444 1.354 1.538V6.3c0 .984.492 1.497 1.497 1.6M7.5 11.5V9.207l-1.621 1.621-.707-.707L6.792 8.5H4.5v-1h2.293L5.172 5.879l.707-.707L7.5 6.792V4.5h1v2.293l1.621-1.621.707.707L9.208 7.5H11.5v1H9.207l1.621 1.621-.707.707L8.5 9.208V11.5z"/></svg>
+        </button>
+        <button class="tb-btn" id="tb-nav-storybook" data-tip="Storybook">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/></svg>
+        </button>
+      </div>
+
+      <!-- center: actions -->
+      <div class="tb-group">
+        <button class="tb-btn" id="tb-import" data-tip="Reload from App">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.5 10a.5.5 0 0 1-.5-.5v-8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 0 0 1h2A1.5 1.5 0 0 0 14 9.5v-8A1.5 1.5 0 0 0 12.5 0h-9A1.5 1.5 0 0 0 2 1.5v8A1.5 1.5 0 0 0 3.5 11h2a.5.5 0 0 0 0-1z"/><path fill-rule="evenodd" d="M7.646 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 14.293V5.5a.5.5 0 0 0-1 0v8.793l-2.146-2.147a.5.5 0 0 0-.708.708z"/></svg>
+        </button>
+        <button class="tb-btn" id="tb-export" data-tip="Reload from Figma">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1z"/><path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708z"/></svg>
+        </button>
+        <div class="tb-divider"></div>
+        <button class="tb-btn" id="tb-preview" data-tip="Preview in app">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/></svg>
+        </button>
+        <button class="tb-btn" id="tb-preview-storybook" data-tip="Preview in Storybook">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/></svg>
+        </button>
+        <button class="tb-btn" id="tb-syncvars" data-tip="Reload from Storybook">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 0a5.53 5.53 0 0 0-3.594 1.342c-.766.66-1.321 1.52-1.464 2.383C1.266 4.095 0 5.555 0 7.318 0 9.366 1.708 11 3.781 11H7.5V5.5a.5.5 0 0 1 1 0V11h4.188C14.502 11 16 9.57 16 7.773c0-1.636-1.242-2.969-2.834-3.194C12.923 1.999 10.69 0 8 0m-.354 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 14.293V11h-1v3.293l-2.146-2.147a.5.5 0 0 0-.708.708z"/></svg>
+        </button>
+      </div>
+
+      <!-- right: settings tab -->
+      <div class="tb-group">
+        <button class="tb-btn" id="tb-nav-settings" data-tip="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── TOKENS VIEW ─────────────────────────────────────────────────── -->
+    <div id="view-tokens" class="view active">
+      <div class="tk-head">
+        <label>Tokens <span class="hint">(from Figma Variables — editable)</span></label>
+        <div class="tk-head-right">
+          <span class="hint" style="font-weight:400;cursor:pointer;">
+            <input type="checkbox" id="autoSync" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync
+          </span>
+          <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="tk-filters" id="tkFilters" hidden></div>
+
+      <div class="tk-table-wrap" id="tkTableWrap">
+        <table class="tk-table">
+          <thead>
+            <tr>
+              <th class="tk-col-icon"></th>
+              <th>Name</th>
+              <th>Value</th>
+              <th class="tk-col-action"></th>
+            </tr>
+          </thead>
+          <tbody id="tkBody"></tbody>
+        </table>
+      </div>
+
+      <div class="tk-rawwrap" id="tkRawWrap" hidden>
+        <textarea id="tokens">{}</textarea>
+
+        <!-- hidden action buttons — click handlers delegated from toolbar -->
+        <div style="display:none;">
+          <button id="reload">Reload from Figma</button>
+          <button id="committed">Load committed</button>
+          <button id="preview">Preview in app</button>
+          <button id="openpr">Open PR</button>
+          <button id="syncvars">Sync Variables</button>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <!-- ── STORYBOOK VIEW ─────────────────────────────────────────────── -->
+    <div id="view-storybook" class="view">
+      <div class="sb-head">
+        <label style="margin:0;">Insert from Storybook <span class="hint">(captured components)</span></label>
+        <button class="secondary sb-refresh" id="loadStories" title="Refresh story list">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+        </button>
+      </div>
+
+      <div class="sb-filters" id="sbFilters" hidden></div>
+
+      <div class="sb-table-wrap" id="sbTableWrap">
+        <table class="sb-table" id="sbTable">
+          <thead>
+            <tr>
+              <th class="sb-col-check"><input type="checkbox" id="sbCheckAll" title="Select all visible" /></th>
+              <th class="sb-col-prev"></th>
+              <th class="sb-col-comp" id="sbThComp">Component</th>
+              <th class="sb-col-story">Story</th>
+              <th class="sb-col-action"></th>
+            </tr>
+          </thead>
+          <tbody id="sbBody"></tbody>
+        </table>
+      </div>
+
+      <div class="sb-bulk" id="sbBulk" hidden>
+        <span class="sb-bulk-count" id="sbBulkCount">0 selected</span>
+        <button class="secondary" id="sbInsertSel">Insert selected</button>
+        <button class="primary" id="sbInsertAll">Insert all</button>
+      </div>
+
+      <div class="sb-progress" id="sbProgress" hidden><div class="sb-progress-bar" id="sbProgressBar"></div></div>
+
+      <div class="status" id="status-sb"></div>
+    </div>
+
+    <!-- ── SETTINGS VIEW ─────────────────────────────────────────────── -->
+    <div id="view-settings" class="view">
+      <p class="settings-note">Saved locally between sessions.</p>
+
+      <label>Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
+      <input id="origin" placeholder="http://localhost:7777" />
+
+      <label>App URL <span class="hint">(page to open with the preview)</span></label>
+      <input id="appUrl" placeholder="http://localhost:5173" />
+
+      <label>Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
+      <input id="storybookUrl" placeholder="http://localhost:6006" />
+
+      <label>GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
+      <input id="githubUrl" placeholder="https://github.com/nhunsaker/figree-demo/edit/main/tokens/semantic.json" />
+
+      <label class="sb-check" style="margin-top:14px;">
+        <input type="checkbox" id="labelToggle" checked />
+        Label inserted components
+        <span class="hint">(wrap each insert in a named frame)</span>
+      </label>
+    </div>
+
+    <!-- off-screen clipboard buffer -->
+    <textarea id="copybuf" aria-hidden="true" tabindex="-1"
+      style="position:absolute;left:-9999px;top:-9999px;height:1px;"></textarea>
+
+    <script>
+      var $ = function(id) { return document.getElementById(id); };
+
+      // ── view switching (3 tabs: tokens / storybook / settings) ─────────
+      var VIEWS = { tokens: 'view-tokens', storybook: 'view-storybook', settings: 'view-settings' };
+      var NAV   = { tokens: 'tb-nav-tokens', storybook: 'tb-nav-storybook', settings: 'tb-nav-settings' };
+
+      function showView(key) {
+        var vids = Object.values(VIEWS);
+        for (var i = 0; i < vids.length; i++) {
+          var v = $(vids[i]);
+          if (v) v.style.display = vids[i] === VIEWS[key] ? 'block' : 'none';
+        }
+        var nids = Object.values(NAV);
+        for (var j = 0; j < nids.length; j++) {
+          var n = $(nids[j]);
+          if (n) n.classList.toggle('active', nids[j] === NAV[key]);
+        }
+        // auto-load stories when switching to storybook tab
+        if (key === 'storybook') loadStories();
+      }
+
+      $('tb-nav-tokens').onclick   = function() { showView('tokens'); };
+      $('tb-nav-storybook').onclick = function() { showView('storybook'); };
+      $('tb-nav-settings').onclick  = function() { showView('settings'); };
+
+      // ── status helpers (tokens view / storybook view) ──────────────────
+      function setStatus(html, isErr) {
+        var el = $('status');
+        el.className = 'status' + (isErr ? ' err' : '');
+        el.innerHTML = html;
+      }
+      function setSbStatus(html, isErr) {
+        var el = $('status-sb');
+        el.className = 'status' + (isErr ? ' err' : '');
+        el.innerHTML = html;
+      }
+
+      // ── persisted settings ─────────────────────────────────────────────
+      var LS = { origin: 'sorb.origin', app: 'sorb.appUrl', gh: 'sorb.githubUrl', sb: 'sorb.storybookUrl', auto: 'sorb.autoSync', label: 'sorb.labelInserts' };
+      function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
+      function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+
+      var DEFAULT_ORIGIN = 'http://localhost:7777';
+      var DEFAULT_APP    = 'http://localhost:5173';
+      var DEFAULT_GH     = 'https://github.com/nhunsaker/figree-demo/edit/main/tokens/semantic.json';
+      var DEFAULT_SB     = 'http://localhost:6006';
+
+      $('origin').value       = lsGet(LS.origin) || DEFAULT_ORIGIN;
+      $('appUrl').value       = lsGet(LS.app)    || DEFAULT_APP;
+      $('githubUrl').value    = lsGet(LS.gh)     || DEFAULT_GH;
+      $('storybookUrl').value = lsGet(LS.sb)     || DEFAULT_SB;
+
+      $('origin').addEventListener('change',       function(e) { lsSet(LS.origin, e.target.value); });
+      $('appUrl').addEventListener('change',       function(e) { lsSet(LS.app,    e.target.value); });
+      $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); });
+      $('storybookUrl').addEventListener('change', function(e) { lsSet(LS.sb,     e.target.value); });
+
+      // Label toggle (default ON — only false when explicitly saved as 'no').
+      $('labelToggle').checked = lsGet(LS.label) !== 'no';
+      $('labelToggle').addEventListener('change', function(e) { lsSet(LS.label, e.target.checked ? 'yes' : 'no'); });
+      function labelInserts() { return $('labelToggle').checked; }
+
+      function trimOrigin() { return $('origin').value.trim().replace(/\/$/, ''); }
+
+      // Best-effort self-report of an inserted component's geometry (+ bound-field
+      // tally in meta) to the bridge /verify endpoint. Fired from the main thread's
+      // sorb-verify message.
+      function verifyInsert(storyId, bbox, meta) {
+        var origin = trimOrigin();
+        if (!origin || !storyId) return;
+        fetch(origin + '/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storyId: storyId, bbox: bbox, meta: meta }),
+        }).catch(function(e) {
+          if (window.console && console.warn) console.warn('sorb verify failed:', e && e.message);
+        });
+      }
+
+      // ── working set (single source of truth) + editor dirty-state ───────
+      var tokenSet = {};            // { name: value } working set — both views derive from this
+      var tokenFilters = {};        // active group filters (empty = all visible)
+      var tokenFilterOpen = false;  // [Filter] chip expanded?
+      var rawOpen = false;          // </> raw editor visible?
+      var livePreviewId = null;     // active live-preview session id (string|null)
+      var pushTimer = null;         // debounce handle for live PUT
+      var mirroring = false;        // guards the textarea input listener from set→raw loops
+      var dirty = false;            // raw editor has unsaved edits
+      var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
+
+      function applyTokens(tokens, isAuto) {
+        setTokenSet(tokens, { silent: true });
+        setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables' + (isAuto ? ' (auto).' : '.'));
+      }
+
+      // ── messages from main thread ──────────────────────────────────────
+      onmessage = function(event) {
+        var msg = event.data.pluginMessage;
+        if (!msg) return;
+        if (msg.type === 'tokens') {
+          handleTokensMessage(msg);
+        } else if (msg.type === 'sync-result') {
+          setStatus('✓ Variables synced — <b>' + msg.created + '</b> created, ' + msg.updated + ' updated' +
+            (msg.skipped ? ', ' + msg.skipped + ' skipped' : '') + ' (collection "' + msg.collection + '").');
+        } else if (msg.type === 'insert-progress') {
+          showProgress(msg.done, msg.total);
+        } else if (msg.type === 'insert-result') {
+          hideProgress();
+          clearSelection();
+          var n = msg.count || 1;
+          setSbStatus('✓ Inserted ' + n + ' component' + (n === 1 ? '' : 's') + ' into the canvas.');
+        } else if (msg.type === 'sorb-verify') {
+          verifyInsert(msg.storyId, msg.bbox, msg.meta);
+        } else if (msg.type === 'error') {
+          hideProgress();
+          setStatus('Plugin error: ' + msg.message, true);
+        }
+      };
+
+      function post(type, extra) {
+        parent.postMessage({ pluginMessage: Object.assign({ type: type }, extra) }, '*');
+      }
+
+      // ── auto-sync toggle (default ON) — starts/stops the main-thread watch ─
+      var autoStored = lsGet(LS.auto);
+      var autoOn = autoStored === '' ? true : autoStored === '1';
+      $('autoSync').checked = autoOn;
+      post('set-auto', { enabled: autoOn });
+      $('autoSync').addEventListener('change', function(e) {
+        var on = e.target.checked;
+        lsSet(LS.auto, on ? '1' : '0');
+        post('set-auto', { enabled: on });
+        if (!on) endSession();   // tearing down auto-sync ends any live-preview session
+        setStatus(on ? 'Auto-sync on — watching Figma Variables.' : 'Auto-sync off.');
+      });
+
+      // ── toolbar action wiring ──────────────────────────────────────────
+      $('tb-import').onclick   = function() { $('committed').click(); };
+      $('tb-export').onclick   = function() { $('reload').click(); };
+      $('tb-preview').onclick  = function() { $('preview').click(); };
+      $('tb-syncvars').onclick = function() { $('syncvars').click(); };
+
+      // ── Reload from Figma ──────────────────────────────────────────────
+      $('reload').onclick = function() { post('reload-tokens'); };
+
+      // ── Sync Variables from code ───────────────────────────────────────
+      $('syncvars').onclick = async function() {
+        var origin = trimOrigin();
+        if (!origin) return setStatus('Set Bridge origin in Settings.', true);
+        setStatus('Fetching resolved tokens…');
+        var tokens;
+        try {
+          var res = await fetch(origin + '/tokens/resolved');
+          if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 404 ? ' — run `sorb-seed resolve` first' : ''));
+          var data = await res.json();
+          tokens = Array.isArray(data) ? data : data.tokens;
+        } catch(e) { return setStatus('Failed to load resolved tokens: ' + e.message, true); }
+        if (!tokens || !tokens.length) return setStatus('Resolved token map is empty.', true);
+        post('sync-variables', { tokens: tokens });
+        setStatus('Creating Figma Variables from ' + tokens.length + ' tokens…');
+      };
+
+      // ── Load committed tokens (→ working set) ──────────────────────────
+      $('committed').onclick = async function() {
+        var origin = trimOrigin();
+        if (!origin) return setStatus('Set Bridge origin in Settings.', true);
+        try {
+          var res = await fetch(origin + '/tokens/latest');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var json = await res.json();
+          setTokenSet(json, { silent: true });
+          setStatus('Loaded committed tokens from the bridge.');
+        } catch(e) { setStatus('Failed to load committed tokens: ' + e.message, true); }
+      };
+
+      // ── Preview in app — ESTABLISHES the live session (§7 option 1) ─────
+      $('preview').onclick = async function() {
+        var origin = trimOrigin();
+        var appUrl = $('appUrl').value.trim();
+        if (!origin || !appUrl) return setStatus('Set Bridge origin and App URL in Settings.', true);
+        setStatus('Posting preview…');
+        try {
+          var res = await fetch(origin + '/preview', {
+            method: 'POST', headers: { 'content-type': 'text/plain' },
+            body: JSON.stringify(tokenSet),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var d = await res.json();
+          livePreviewId = d.id;
+          var url = appUrl + (appUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
+          window.open(url, '_blank');
+          post('notify', { message: 'Preview ready: ' + d.id });
+          setStatus('Preview <b>' + d.id + '</b> created. <a href="' + url + '" target="_blank">Open app ↗</a>' +
+            ($('autoSync').checked ? ' — live editing on.' : '.'));
+        } catch(e) { setStatus('Preview failed: ' + e.message, true); }
+      };
+
+      // ── Preview in Storybook (→ working set) ───────────────────────────
+      $('tb-preview-storybook').onclick = async function() {
+        var origin = trimOrigin();
+        var sbUrl  = $('storybookUrl').value.trim().replace(/\/$/, '');
+        if (!origin) return setStatus('Set Bridge origin in Settings.', true);
+        if (!sbUrl)  return setStatus('Set Storybook URL in Settings.', true);
+        setStatus('Posting preview…');
+        try {
+          var res = await fetch(origin + '/preview', {
+            method: 'POST', headers: { 'content-type': 'text/plain' },
+            body: JSON.stringify(tokenSet),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var d = await res.json();
+          var url = sbUrl + (sbUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
+          window.open(url, '_blank');
+          post('notify', { message: 'Storybook preview: ' + d.id });
+          setStatus('Storybook preview <b>' + d.id + '</b> opened. <a href="' + url + '" target="_blank">Open ↗</a>');
+        } catch(e) { setStatus('Preview failed: ' + e.message, true); }
+      };
+
+      // ── Open PR (→ working set) ─────────────────────────────────────────
+      $('openpr').onclick = async function() {
+        var edits = tokenSet;                       // working set, not parsed textarea
+        var origin  = trimOrigin();
+        var editUrl = $('githubUrl').value.trim();
+        if (!origin)  return setStatus('Set Bridge origin in Settings.', true);
+        if (!editUrl) return setStatus('Set GitHub file URL in Settings.', true);
+        setStatus('Merging with committed tokens…');
+        var committed;
+        try {
+          var res = await fetch(origin + '/tokens/latest');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          committed = await res.json();
+        } catch(e) { return setStatus('Could not load committed tokens: ' + e.message, true); }
+        var merged = Object.assign({}, committed, edits);
+        var json = JSON.stringify(merged, null, 2) + '\n';
+        var changed = Object.keys(edits).filter(function(k) { return committed[k] !== edits[k]; });
+        var copied = false;
+        try { await navigator.clipboard.writeText(json); copied = true; } catch(e) {}
+        if (!copied) {
+          try { var buf=$('copybuf'); buf.value=json; buf.focus(); buf.select(); copied=document.execCommand('copy'); } catch(e) {}
+        }
+        if (!copied) { if (!rawOpen) toggleRaw(); $('tokens').value = json; }
+        window.open(editUrl, '_blank');
+        setStatus((copied ? '✓ Copied <code>tokens.json</code> to clipboard. ' : 'Could not auto-copy — merged file is in the raw editor. ') +
+          'In GitHub: <b>⌘A → paste → Commit changes… → Propose changes</b>.' +
+          (changed.length ? '<br/>Changed: <b>' + changed.join(', ') + '</b>' : ''));
+      };
+
+      // ════════════════════════════════════════════════════════════════════
+      // TOKENS TABLE — type/group inference + rendering (spec §2, §4, §8)
+      // ════════════════════════════════════════════════════════════════════
+
+      // §2.1 — infer a token's type from its value string.
+      function inferType(v) {
+        var s = String(v).trim();
+        if (/^#([0-9a-f]{3,8})$/i.test(s) || /^(rgb|hsl)a?\(/i.test(s) || s === 'transparent') return 'COLOR';
+        if (s === 'true' || s === 'false') return 'BOOLEAN';
+        if (/^-?\d*\.?\d+(px|rem|em|%|vh|vw|pt)?$/.test(s)) return 'FLOAT';
+        return 'STRING';
+      }
+
+      // §2.2 — smart sub-group for the filter chips.
+      function groupOf(name) {
+        var p = String(name).split('-');
+        if (p[0] === 'color') {
+          var g = p[1];
+          return (g === 'white' || g === 'black' || g === 'transparent') ? 'base' : g;
+        }
+        if (p[0] === 'button') {
+          return (['primary', 'danger', 'success', 'outline'].indexOf(p[1]) !== -1) ? p[1] : 'button';
+        }
+        return p[0];
+      }
+
+      // Sorted, unique list of groups over the current working set.
+      function tokenGroups() {
+        var seen = {}, out = [], names = Object.keys(tokenSet);
+        for (var i = 0; i < names.length; i++) {
+          var g = groupOf(names[i]);
+          if (!seen[g]) { seen[g] = true; out.push(g); }
+        }
+        out.sort();
+        return out;
+      }
+
+      // §4.1 — validate a raw string against an inferred type.
+      function validateValue(val, type) {
+        var s = String(val).trim();
+        if (type === 'COLOR') return /^#([0-9a-f]{3,8})$/i.test(s) || /^(rgb|hsl)a?\(/i.test(s) || s === 'transparent';
+        if (type === 'FLOAT') return /^-?\d*\.?\d+(px|rem|em|%|vh|vw|pt)?$/.test(s);
+        if (type === 'BOOLEAN') return s === 'true' || s === 'false';
+        return true; // STRING accepts anything
+      }
+
+      // §8/§12 glyph path data, keyed by type.
+      var TK_GLYPH_PATHS = {
+        FLOAT: 'M8.39 12.648a1 1 0 0 0-.015.18c0 .305.21.508.5.508.266 0 .492-.172.555-.477l.554-2.703h1.204c.421 0 .617-.234.617-.547 0-.312-.188-.53-.617-.53h-.985l.516-2.524h1.265c.43 0 .618-.227.618-.547 0-.313-.188-.524-.618-.524h-1.046l.476-2.304a1 1 0 0 0 .016-.164.51.51 0 0 0-.516-.516.54.54 0 0 0-.539.43l-.523 2.554H7.617l.477-2.304c.008-.04.015-.118.015-.164a.51.51 0 0 0-.523-.516.54.54 0 0 0-.531.43L6.53 5.484H5.414c-.43 0-.617.22-.617.532s.187.539.617.539h.906l-.515 2.523H4.609c-.421 0-.609.219-.609.531s.188.547.61.547h.976l-.516 2.492c-.008.04-.015.125-.015.18 0 .305.21.508.5.508.265 0 .492-.172.554-.477l.555-2.703h2.242zm-1-6.109h2.266l-.515 2.563H6.859l.532-2.563z',
+        STRING: 'm2.244 13.081.943-2.803H6.66l.944 2.803H8.86L5.54 3.75H4.322L1 13.081zm2.7-7.923L6.34 9.314H3.51l1.4-4.156zm9.146 7.027h.035v.896h1.128V8.125c0-1.51-1.114-2.345-2.646-2.345-1.736 0-2.59.916-2.666 2.174h1.108c.068-.718.595-1.19 1.517-1.19.971 0 1.518.52 1.518 1.464v.731H12.19c-1.647.007-2.522.8-2.522 2.058 0 1.319.957 2.18 2.345 2.18 1.06 0 1.716-.43 2.078-1.011zm-1.763.035c-.752 0-1.456-.397-1.456-1.244 0-.65.424-1.115 1.408-1.115h1.805v.834c0 .896-.752 1.525-1.757 1.525',
+        BOOLEAN: 'M5 3a5 5 0 0 0 0 10h6a5 5 0 0 0 0-10zm6 9a4 4 0 1 1 0-8 4 4 0 0 1 0 8'
+      };
+
+      // Escape a string for safe interpolation into HTML attribute/text contexts.
+      function tkEscape(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      // Leading-cell HTML: swatch for colors, type glyph otherwise.
+      function iconCellHtml(name, value) {
+        var type = inferType(value);
+        if (type === 'COLOR') {
+          return '<span class="tk-swatch" style="background:' + tkEscape(value) + '"></span>';
+        }
+        var d = TK_GLYPH_PATHS[type] || TK_GLYPH_PATHS.STRING;
+        return '<span class="tk-glyph" title="' + tkEscape(type) + '">'
+          + '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="' + d + '"/></svg>'
+          + '</span>';
+      }
+
+      // §4 — render the token table from the working set into #tkBody.
+      function renderTokenTable() {
+        var body = $('tkBody');
+        body.innerHTML = '';
+
+        var hasFilter = Object.keys(tokenFilters).length > 0;
+        var names = Object.keys(tokenSet);
+        if (hasFilter) names = names.filter(function(n) { return !!tokenFilters[groupOf(n)]; });
+        names.sort();
+
+        if (!names.length) {
+          var trE = document.createElement('tr');
+          var tdE = document.createElement('td');
+          tdE.colSpan = 4;
+          tdE.className = 'tk-empty';
+          tdE.textContent = Object.keys(tokenSet).length ? 'No tokens match the filter.' : 'No tokens.';
+          trE.appendChild(tdE); body.appendChild(trE);
+          return;
+        }
+
+        names.forEach(function(name) {
+          var tr = document.createElement('tr');
+
+          var tdIcon = document.createElement('td');
+          tdIcon.className = 'tk-col-icon';
+          tdIcon.innerHTML = iconCellHtml(name, tokenSet[name]);
+          tr.appendChild(tdIcon);
+
+          var tdName = document.createElement('td');
+          var spanName = document.createElement('span');
+          spanName.className = 'tk-name';
+          spanName.title = name;
+          spanName.textContent = name;
+          tdName.appendChild(spanName); tr.appendChild(tdName);
+
+          var tdVal = document.createElement('td');
+          var input = document.createElement('input');
+          input.className = 'tk-val';
+          input.value = tokenSet[name];
+          input.oninput = (function(rowName, iconCell, inputEl) {
+            return function() {
+              var raw = inputEl.value;
+              var t = inferType(raw);
+              if (validateValue(raw, t)) {
+                tokenSet[rowName] = raw;
+                inputEl.classList.remove('invalid');
+                inputEl.title = '';
+                iconCell.innerHTML = iconCellHtml(rowName, raw);
+                onTokenEdit();
+              } else {
+                inputEl.classList.add('invalid');
+                inputEl.title = 'Invalid ' + t.toLowerCase() + ' value';
+              }
+            };
+          })(name, tdIcon, input);
+          tdVal.appendChild(input); tr.appendChild(tdVal);
+
+          var tdAct = document.createElement('td');
+          tdAct.className = 'tk-col-action';
+          var del = document.createElement('button');
+          del.className = 'tk-del';
+          del.title = 'Remove from working set';
+          del.textContent = '✕'; // ✕
+          del.onclick = (function(rowName) {
+            return function() { delete tokenSet[rowName]; renderTokenTable(); onTokenEdit(); };
+          })(name);
+          tdAct.appendChild(del); tr.appendChild(tdAct);
+
+          body.appendChild(tr);
+        });
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // TOKENS TABLE — working set, raw mirror, filter chips, live preview
+      // ════════════════════════════════════════════════════════════════════
+
+      // Working set is the single source of truth; table + raw editor are views.
+      function setTokenSet(map, opts) {
+        opts = opts || {};
+        var next = {};
+        if (map) { var keys = Object.keys(map); for (var i = 0; i < keys.length; i++) next[keys[i]] = map[keys[i]]; }
+        tokenSet = next;
+        dirty = false; pendingAuto = null;
+        renderTokenChips();
+        renderTokenTable();
+        syncRawFromSet();
+        if (!opts.silent) setStatus(Object.keys(tokenSet).length + ' token(s) loaded.');
+      }
+
+      // ── raw <-> set two-way mirror (§6) ──────────────────────────────────
+      // mirroring guards the textarea input listener from looping on programmatic writes.
+      function syncRawFromSet() {
+        mirroring = true;
+        $('tokens').value = JSON.stringify(tokenSet, null, 2);
+        mirroring = false;
+      }
+
+      function applyRawFromText() {
+        var parsed;
+        try { parsed = JSON.parse($('tokens').value); }
+        catch (e) { setStatus('Raw JSON invalid — table unchanged.', true); return; }
+        setTokenSet(parsed);   // valid → adopt + re-render
+      }
+
+      // Textarea listener — only the raw editor drives the set, and only when open.
+      var rawEditTimer = null;
+      $('tokens').addEventListener('input', function() {
+        if (mirroring) return;        // ignore programmatic mirror writes
+        if (!rawOpen) return;         // table is the active editor
+        dirty = true;
+        if (rawEditTimer) clearTimeout(rawEditTimer);
+        rawEditTimer = setTimeout(applyRawFromText, 300);
+      });
+
+      // ── filter chips (§5) — view-only, mirrors storybook renderChips() ───
+      function renderTokenChips() {
+        var box = $('tkFilters');
+        box.innerHTML = '';
+        if (rawOpen) { box.hidden = true; return; }              // raw editor replaces the table view
+        var groups = tokenGroups();
+        if (groups.length <= 1) { box.hidden = true; return; }   // hidden if one group
+        box.hidden = false;
+
+        var filterChip = document.createElement('span');
+        filterChip.className = 'tk-chip' + (tokenFilterOpen ? ' active' : '');
+        filterChip.textContent = 'Filter';
+        filterChip.onclick = function() {
+          tokenFilterOpen = !tokenFilterOpen;
+          if (!tokenFilterOpen) tokenFilters = {};   // collapsing clears the filter
+          renderTokenChips(); renderTokenTable();
+        };
+        box.appendChild(filterChip);
+
+        if (!tokenFilterOpen) return;                // groups hidden until expanded
+
+        groups.forEach(function(group) {
+          var chip = document.createElement('span');
+          chip.className = 'tk-chip' + (tokenFilters[group] ? ' active' : '');
+          chip.textContent = group;
+          chip.onclick = function() {
+            if (tokenFilters[group]) delete tokenFilters[group]; else tokenFilters[group] = true;
+            renderTokenChips(); renderTokenTable();
+          };
+          box.appendChild(chip);
+        });
+      }
+
+      // ── raw editor toggle (</>) (§6) ─────────────────────────────────────
+      // Raw editor REPLACES the table view: opening it hides the filter chips +
+      // table; closing restores them (renderTokenChips recomputes chip visibility).
+      function toggleRaw() {
+        rawOpen = !rawOpen;
+        $('tkRawWrap').hidden = !rawOpen;
+        $('tkTableWrap').hidden = rawOpen;
+        $('tkRaw').classList.toggle('active', rawOpen);
+        if (rawOpen) { $('tkFilters').hidden = true; syncRawFromSet(); }  // serialize set into the editor
+        else renderTokenChips();                   // restore correct chip visibility
+      }
+      $('tkRaw').onclick = toggleRaw;
+
+      // ── post-mutation hook (called by the table on edit + delete) ────────
+      function onTokenEdit() {
+        syncRawFromSet();                          // keep raw mirror current
+        if (!$('autoSync').checked) return;        // no push when auto-sync off
+        if (livePreviewId) schedulePush();
+        else setStatus('Click Preview in app to start live editing.');
+      }
+
+      // ── live preview push (§7) ───────────────────────────────────────────
+      function schedulePush() {
+        if (pushTimer) clearTimeout(pushTimer);
+        pushTimer = setTimeout(pushPreview, 250);
+      }
+
+      async function pushPreview() {
+        if (!livePreviewId) return;
+        try {
+          var res = await fetch(trimOrigin() + '/preview/' + livePreviewId, {
+            method: 'PUT', headers: { 'content-type': 'text/plain' },
+            body: JSON.stringify(tokenSet),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          setStatus('Live preview updated (' + Object.keys(tokenSet).length + ' tokens).');
+        } catch (e) { setStatus('Live preview update failed: ' + e.message, true); }
+      }
+
+      // ── live session teardown (§7) — start lives in $('preview').onclick ─
+      async function endSession() {
+        if (!livePreviewId) return;
+        var id = livePreviewId;
+        livePreviewId = null;                       // clear first (best-effort delete)
+        try { await fetch(trimOrigin() + '/preview/' + id, { method: 'DELETE' }); }
+        catch (e) { /* best-effort; ignore */ }
+      }
+      window.addEventListener('unload', function() { endSession(); });
+
+      // ── inbound Figma-Variable pull + keep-pull dirty buffer (§7.1) ──────
+      // "dirty" now means: the raw editor is open AND has unsaved edits.
+      function handleTokensMessage(msg) {
+        if (msg.source === 'auto' && rawOpen && dirty) {
+          pendingAuto = msg.tokens;
+          setStatus('Figma Variables changed — <a href="#" id="applyAuto">Refresh</a>');
+          var ap = $('applyAuto');
+          if (ap) ap.onclick = function(e) { e.preventDefault(); applyTokens(pendingAuto, true); };
+        } else {
+          applyTokens(msg.tokens, msg.source === 'auto');
+        }
+      }
+
+      // ── Storybook table state ──────────────────────────────────────────
+      var OTHER = '—other—';          // sentinel component value for untyped rows
+      var sbRows = [];                           // [{ storyId, component, story, importPath }]
+      var sbHasComponents = false;               // any row carries a component?
+      var sbFilterOpen = false;                  // is the [Filter] chip expanded?
+      var sbFilters = {};                        // active component filters (empty = all)
+      var sbSelected = {};                       // selected storyIds
+      var sbArtifactCache = {};                  // importPath -> component artifact JSON
+
+      // Deterministic color for a component name (HSL hue from a simple hash).
+      function compColor(name) {
+        var h = 0, s = String(name || '?');
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+        return 'hsl(' + h + ', 55%, 55%)';
+      }
+
+      // ── Inline SVG preview from a captured LayerNode tree ────────────────
+      var sbPreviewCache = {};      // storyId -> svg html string, or null = keep icon
+      var sbPreviewObserver = null; // lazy-loads previews for visible rows
+
+      function fillCss(fill) {
+        if (!fill || !fill.color) return null;
+        var c = fill.color, o = fill.opacity == null ? 1 : fill.opacity;
+        return 'rgba(' + Math.round(c.r * 255) + ',' + Math.round(c.g * 255) + ',' + Math.round(c.b * 255) + ',' + o + ')';
+      }
+
+      // Walk the tree (capped) → SVG rects. Geometry is parent-relative, so we
+      // accumulate offsets; the root is normalised to draw at 0,0. The viewBox
+      // is cropped to the bounding box of drawn content — captured roots are
+      // often the story's full-width container, so cropping makes the component
+      // fill the thumbnail instead of being a speck in an empty frame.
+      // Thumbnail size and the max downscale we'll tolerate before a preview
+      // loses all context (reads as mostly-white space) and the type-icon is
+      // clearer. Derived from the captured size distribution: single components
+      // are ≤~360px (≤12x), full-width layout/row captures are 500–1200px.
+      var PREVIEW_PX = 30, MAX_DOWNSCALE = 12;
+
+      function buildSvg(root) {
+        if (!root || !root.width || !root.height) return null;
+        var parts = [], count = { n: 0 };
+        var bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+        function grow(x, y, w, h) {
+          if (x < bx0) bx0 = x; if (y < by0) by0 = y;
+          if (x + w > bx1) bx1 = x + w; if (y + h > by1) by1 = y + h;
+        }
+
+        function walk(node, ox, oy, depth) {
+          if (!node || count.n > 40 || depth > 4) return;
+          var x = ox + (node.x || 0), y = oy + (node.y || 0);
+          var fill = node.fills && node.fills[0];
+          if (node.type === 'TEXT') {
+            var tc = fillCss(fill) || 'rgba(70,70,70,0.85)';
+            var th = Math.max(2, (node.height || 10) * 0.45), ty = y + (node.height || 10) * 0.28, tw = node.width || 20;
+            parts.push('<rect x="' + x + '" y="' + ty + '" width="' + tw + '" height="' + th + '" rx="2" fill="' + tc + '"/>');
+            grow(x, ty, tw, th); count.n++;
+          } else {
+            var f = fillCss(fill);
+            var s = fillCss(node.strokes && node.strokes[0]);
+            if (f || s) {
+              var w = node.width || 0, h = node.height || 0;
+              var rx = typeof node.cornerRadius === 'number' ? node.cornerRadius : 0;
+              parts.push('<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + rx + '"'
+                + (f ? ' fill="' + f + '"' : ' fill="none"')
+                + (s ? ' stroke="' + s + '" stroke-width="1"' : '') + '/>');
+              grow(x, y, w, h); count.n++;
+            }
+          }
+          var kids = node.children || [];
+          for (var i = 0; i < kids.length; i++) walk(kids[i], x, y, depth + 1);
+        }
+        walk(root, -(root.x || 0), -(root.y || 0), 0);
+        if (!parts.length || bx1 <= bx0 || by1 <= by0) return null;
+
+        var bw = bx1 - bx0, bh = by1 - by0;
+        // Size gate: if the component must shrink more than MAX_DOWNSCALE× to
+        // fit the thumbnail, it loses context → fall back to the type-icon.
+        if (Math.max(bw, bh) > PREVIEW_PX * MAX_DOWNSCALE) return null;
+
+        var pad = 4;
+        var vx = bx0 - pad, vy = by0 - pad, vw = bw + pad * 2, vh = bh + pad * 2;
+        return '<svg viewBox="' + vx + ' ' + vy + ' ' + vw + ' ' + vh + '" width="30" height="30" preserveAspectRatio="xMidYMid meet" '
+          + 'style="border-radius:4px;background:#fff;border:1px solid #eee;">' + parts.join('') + '</svg>';
+      }
+
+      function iconHtml(r) {
+        var ch = (r.component || r.story || '?').charAt(0).toUpperCase();
+        return '<div class="sb-prev" style="background:' + compColor(r.component || r.story) + '">' + ch + '</div>';
+      }
+
+      function ensureObserver() {
+        if (sbPreviewObserver || !('IntersectionObserver' in window)) return;
+        sbPreviewObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(e) {
+            if (!e.isIntersecting) return;
+            sbPreviewObserver.unobserve(e.target);
+            loadPreview(e.target);
+          });
+        }, { root: $('sbTableWrap'), rootMargin: '80px' });
+      }
+
+      async function loadPreview(cell) {
+        var r = cell._row;
+        if (!r) return;
+        if (sbPreviewCache[r.storyId] !== undefined) {
+          if (sbPreviewCache[r.storyId]) cell.innerHTML = sbPreviewCache[r.storyId];
+          return;
+        }
+        var origin = trimOrigin();
+        if (!origin) return;
+        try {
+          var art = await fetchComponentFile(origin, r.importPath, r.storyId);
+          var story = (art.stories || []).find(function(s) { return s.id === r.storyId; });
+          var svg = story && story.root ? buildSvg(story.root) : null;
+          sbPreviewCache[r.storyId] = svg;          // null → keep the icon
+          if (svg) cell.innerHTML = svg;
+        } catch (e) { sbPreviewCache[r.storyId] = null; }
+      }
+
+      function visibleRows() {
+        var active = Object.keys(sbFilters);
+        if (!active.length) return sbRows.slice();
+        return sbRows.filter(function(r) {
+          return sbFilters[r.component || OTHER];
+        });
+      }
+
+      // ── Load story list (auto on storybook tab switch) ─────────────────
+      function loadStories() {
+        var origin = trimOrigin();
+        if (!origin) return setSbStatus('Set Bridge origin in Settings.', true);
+        setSbStatus('Loading…');
+        fetch(origin + '/artifacts')
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 404 ? ' — run `sorb-seed capture` first' : ''));
+            return res.json();
+          })
+          .then(function(idx) {
+            var stories = idx.stories || {};
+            var ids = Object.keys(stories);
+            sbRows = ids.map(function(id) {
+              var s = stories[id];
+              return { storyId: id, component: s.component || '', story: s.name || id, importPath: s.importPath || '' };
+            });
+            sbRows.sort(function(a, b) {
+              return (a.component || '').localeCompare(b.component || '') || a.story.localeCompare(b.story);
+            });
+            sbHasComponents = sbRows.some(function(r) { return r.component; });
+            sbFilterOpen = false;
+            sbFilters = {};
+            sbSelected = {};
+            sbArtifactCache = {};
+            sbPreviewCache = {};
+            if (sbPreviewObserver) { sbPreviewObserver.disconnect(); sbPreviewObserver = null; }
+            renderChips();
+            renderTable();
+            updateBulk();
+            if (!ids.length) {
+              setSbStatus('');
+            } else {
+              setSbStatus(ids.length + ' captured stor' + (ids.length === 1 ? 'y' : 'ies') + ' loaded.');
+            }
+          })
+          .catch(function(e) { setSbStatus('Failed to load stories: ' + e.message, true); sbRows = []; renderTable(); });
+      }
+      $('loadStories').onclick = loadStories;
+
+      // ── Filter chips ────────────────────────────────────────────────────
+      // Collapsed by default: a single [Filter] chip. Activating it reveals the
+      // per-component chips; deactivating hides them and clears any selection.
+      function renderChips() {
+        var box = $('sbFilters');
+        box.innerHTML = '';
+        if (!sbHasComponents) { box.hidden = true; return; }
+        box.hidden = false;
+
+        var filterChip = document.createElement('span');
+        filterChip.className = 'sb-chip' + (sbFilterOpen ? ' active' : '');
+        filterChip.textContent = 'Filter';
+        filterChip.onclick = function() {
+          sbFilterOpen = !sbFilterOpen;
+          if (!sbFilterOpen) sbFilters = {};   // collapsing clears the filter
+          renderChips(); renderTable(); updateBulk();
+        };
+        box.appendChild(filterChip);
+
+        if (!sbFilterOpen) return;             // categories hidden until expanded
+
+        var comps = {}; var hasOther = false;
+        sbRows.forEach(function(r) { if (r.component) comps[r.component] = true; else hasOther = true; });
+        var names = Object.keys(comps).sort();
+        if (hasOther) names.push(OTHER);
+
+        names.forEach(function(name) {
+          var chip = document.createElement('span');
+          chip.className = 'sb-chip' + (sbFilters[name] ? ' active' : '');
+          chip.textContent = name === OTHER ? 'Other' : name;
+          chip.onclick = function() {
+            if (sbFilters[name]) delete sbFilters[name]; else sbFilters[name] = true;
+            renderChips(); renderTable(); updateBulk();
+          };
+          box.appendChild(chip);
+        });
+      }
+
+      // ── Table ───────────────────────────────────────────────────────────
+      function renderTable() {
+        var body = $('sbBody');
+        body.innerHTML = '';
+        $('sbThComp').hidden = !sbHasComponents;
+
+        var rows = visibleRows();
+        if (!rows.length) {
+          var tr = document.createElement('tr');
+          var td = document.createElement('td');
+          td.colSpan = 5;
+          td.className = 'sb-empty';
+          td.innerHTML = sbRows.length
+            ? 'No stories match the filter.'
+            : 'No captured stories.<br>Run <code>sorb-seed capture</code>, then click ↻.';
+          tr.appendChild(td); body.appendChild(tr);
+          $('sbCheckAll').checked = false;
+          return;
+        }
+
+        rows.forEach(function(r) {
+          var tr = document.createElement('tr');
+
+          // checkbox
+          var tdc = document.createElement('td'); tdc.className = 'sb-col-check';
+          var cb = document.createElement('input'); cb.type = 'checkbox';
+          cb.checked = !!sbSelected[r.storyId];
+          cb.onchange = function() {
+            if (cb.checked) sbSelected[r.storyId] = true; else delete sbSelected[r.storyId];
+            updateBulk();
+          };
+          tdc.appendChild(cb); tr.appendChild(tdc);
+
+          // preview — SVG from the LayerNode (lazy), type-icon placeholder
+          var tdp = document.createElement('td'); tdp.className = 'sb-col-prev';
+          tdp._row = r;
+          if (sbPreviewCache[r.storyId]) {
+            tdp.innerHTML = sbPreviewCache[r.storyId];   // already rendered
+          } else {
+            tdp.innerHTML = iconHtml(r);
+            ensureObserver();
+            if (sbPreviewObserver) sbPreviewObserver.observe(tdp); else loadPreview(tdp);
+          }
+          tr.appendChild(tdp);
+
+          // component
+          var tdcomp = document.createElement('td'); tdcomp.className = 'sb-col-comp';
+          tdcomp.hidden = !sbHasComponents;
+          tdcomp.textContent = r.component || '';
+          tr.appendChild(tdcomp);
+
+          // story
+          var tds = document.createElement('td');
+          tds.textContent = r.story;
+          tr.appendChild(tds);
+
+          // per-row insert
+          var tda = document.createElement('td'); tda.className = 'sb-col-action';
+          var btn = document.createElement('button'); btn.className = 'sb-row-insert';
+          btn.textContent = 'Insert';
+          btn.onclick = function() { insertMany([r.storyId]); };
+          tda.appendChild(btn); tr.appendChild(tda);
+
+          body.appendChild(tr);
+        });
+
+        // header "select all" reflects whether every visible row is selected
+        var allSel = rows.every(function(r) { return sbSelected[r.storyId]; });
+        $('sbCheckAll').checked = rows.length > 0 && allSel;
+      }
+
+      $('sbCheckAll').onchange = function() {
+        var rows = visibleRows();
+        if ($('sbCheckAll').checked) rows.forEach(function(r) { sbSelected[r.storyId] = true; });
+        else rows.forEach(function(r) { delete sbSelected[r.storyId]; });
+        renderTable(); updateBulk();
+      };
+
+      // ── Bulk toolbar ──────────────────────────────────────────────────
+      function selectedIds() { return Object.keys(sbSelected); }
+      function clearSelection() { sbSelected = {}; renderTable(); updateBulk(); }
+
+      function updateBulk() {
+        var sel = selectedIds().length;
+        var bulk = $('sbBulk');
+        bulk.hidden = sel === 0;
+        if (sel > 0) {
+          $('sbBulkCount').textContent = sel + ' selected';
+          // One action button, shown by count: "Insert selected" for a single
+          // pick, "Insert all (N)" for many. Both insert the selected set.
+          $('sbInsertSel').style.display = sel === 1 ? '' : 'none';
+          $('sbInsertAll').style.display = sel >= 2 ? '' : 'none';
+          $('sbInsertAll').textContent = 'Insert all (' + sel + ')';
+        }
+        // hide per-row insert buttons while selecting
+        var btns = document.querySelectorAll('.sb-row-insert');
+        for (var i = 0; i < btns.length; i++) btns[i].style.visibility = sel > 0 ? 'hidden' : 'visible';
+      }
+
+      $('sbInsertSel').onclick = function() { insertMany(selectedIds()); };
+      $('sbInsertAll').onclick = function() { insertMany(selectedIds()); };
+
+      // ── Progress ────────────────────────────────────────────────────────
+      function showProgress(done, total) {
+        var p = $('sbProgress'); p.hidden = false;
+        $('sbProgressBar').style.width = total ? Math.round((done / total) * 100) + '%' : '0%';
+        setSbStatus('Inserting ' + done + ' / ' + total + '…');
+      }
+      function hideProgress() { $('sbProgress').hidden = true; $('sbProgressBar').style.width = '0%'; }
+
+      // ── Resolve roots + insert ──────────────────────────────────────────
+      // One /artifact fetch returns the whole component file (all sibling
+      // stories), so cache by importPath and dig out each story's root by id.
+      async function fetchComponentFile(origin, importPath, anyStoryId) {
+        if (sbArtifactCache[importPath]) return sbArtifactCache[importPath];
+        var res = await fetch(origin + '/artifact?id=' + encodeURIComponent(anyStoryId));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var art = await res.json();
+        sbArtifactCache[importPath] = art;
+        return art;
+      }
+
+      function rowOf(storyId) {
+        for (var i = 0; i < sbRows.length; i++) if (sbRows[i].storyId === storyId) return sbRows[i];
+        return null;
+      }
+
+      async function insertMany(ids) {
+        var origin = trimOrigin();
+        if (!origin) return setSbStatus('Set Bridge origin in Settings.', true);
+        if (!ids.length) return setSbStatus('Nothing selected.', true);
+        setSbStatus('Fetching ' + ids.length + ' component' + (ids.length === 1 ? '' : 's') + '…');
+        try {
+          var items = [];
+          for (var i = 0; i < ids.length; i++) {
+            var row = rowOf(ids[i]);
+            if (!row) continue;
+            var art = await fetchComponentFile(origin, row.importPath, ids[i]);
+            var story = (art.stories || []).find(function(s) { return s.id === ids[i]; });
+            if (!story || !story.root) throw new Error('artifact has no root for ' + ids[i]);
+            var label = (row.component ? row.component + ' / ' : '') + row.story;
+            items.push({ node: story.root, label: label, storyId: ids[i] });
+          }
+          if (!items.length) throw new Error('no roots resolved');
+          // Always route through insert-nodes so every insert uses the no-stack
+          // placement (below existing content), single or bulk, labelled or not.
+          post('insert-nodes', { items: items, withLabels: labelInserts() });
+          setSbStatus('Inserting ' + items.length + ' component' + (items.length === 1 ? '' : 's') + '…');
+        } catch (e) { setSbStatus('Insert failed: ' + e.message, true); hideProgress(); }
+      }
+
+      // initialise — seed an empty working set (renders the table/chips), show tokens view
+      setTokenSet({}, { silent: true });
+      showView('tokens');
+    </script>
+  </body>
+</html>
