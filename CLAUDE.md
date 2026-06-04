@@ -6,7 +6,7 @@ Part of the **Sorb** polyrepo under the **Metatoy** org (local base
 
 ## What this is
 
-`@metatoy/sorb-canopy` — the **Figma plugin**. Previews proposed design tokens in
+`@sorb/canopy` — the **Figma plugin**. Previews proposed design tokens in
 your app via the `sorb-juice` bridge, and inserts captured geometry with bound
 Figma Variables. The canopy = your app's foliage seen in Figma (the design-side
 view; `sorb-leaf` is the dev-side view). Open repo, but **not an npm package** —

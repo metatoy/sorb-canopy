@@ -1,5 +1,5 @@
 {
-  "name": "@metatoy/sorb-canopy",
+  "name": "@sorb/canopy",
   "version": "1.3.0",
   "private": true,
   "description": "Figma plugin that previews proposed design tokens in your app via the Sorb bridge — the canopy: your app's foliage seen in Figma",
