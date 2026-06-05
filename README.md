@@ -1,4 +1,4 @@
-# @metatoy/sorb-canopy
+# @sorb/canopy
 
 Figma plugin that automates the Sorb preview loop: it reads your file's
 **Variables**, maps them to Sorb's `name → value` token shape, POSTs them
