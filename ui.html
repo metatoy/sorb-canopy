@@ -165,6 +165,22 @@
       .tk-rawwrap { margin-top: 8px; }
       .tk-rawwrap[hidden] { display: none; }
 
+      /* ── "Used by N" blast-radius pill (§7 P2) ───────────────────────── */
+      .tk-uses {
+        font-size: 10px; padding: 2px 7px; border-radius: 10px; border: 1px solid #d9d9d9;
+        background: #fff; color: #555; cursor: pointer; user-select: none; white-space: nowrap;
+      }
+      .tk-uses:hover { background: #f0f0f0; }
+      .tk-uses.muted { color: #aaa; cursor: default; }
+      .tk-uses.muted:hover { background: #fff; }
+      .tk-uses-detail {
+        padding: 4px 8px 6px 38px; font-size: 10px; color: #666; background: #fafafa;
+        line-height: 1.5;
+      }
+      .tk-uses-detail .tk-uses-row { font-family: ui-monospace, Menlo, monospace; }
+      .tk-uses-detail .tk-uses-role { color: #1e3a5f; font-weight: 600; }
+      .tk-uses-detail.empty { color: #999; }
+
       /* ── connection-status pill ──────────────────────────────────────── */
       .conn-pill {
         display: flex; align-items: center; gap: 5px;
@@ -725,6 +741,17 @@
 
           var tdAct = document.createElement('td');
           tdAct.className = 'tk-col-action';
+
+          // "Used by N" blast-radius pill — lazy fetch on click (§7 P2).
+          var uses = document.createElement('button');
+          uses.className = 'tk-uses';
+          uses.title = 'Show components bound to this token';
+          uses.textContent = 'Used by …';
+          uses.onclick = (function(rowName, btn, rowEl) {
+            return function() { toggleUsages(rowName, btn, rowEl); };
+          })(name, uses, tr);
+          tdAct.appendChild(uses);
+
           var del = document.createElement('button');
           del.className = 'tk-del';
           del.title = 'Remove from working set';
@@ -736,6 +763,86 @@
 
           body.appendChild(tr);
         });
+      }
+
+      // ── "Used by N" blast-radius (§7 P2) ─────────────────────────────────
+      // Token View rows are keyed by token NAME (hyphenated, e.g. "color-action-
+      // primary"); the bridge /usages cssVar form is the same name with a "--"
+      // prefix. We query by cssVar so no id mapping is needed. Lazy on click +
+      // bridge-down degrades quietly (no throw).
+      function cssVarForName(name) {
+        var s = String(name);
+        return s.indexOf('--') === 0 ? s : '--' + s;
+      }
+
+      // Toggle an inline detail row beneath the token row. First open fetches.
+      function toggleUsages(name, btn, rowEl) {
+        var existing = rowEl.nextSibling;
+        if (existing && existing._tkUsesFor === name) {
+          // collapse
+          existing.parentNode.removeChild(existing);
+          btn.classList.remove('open');
+          return;
+        }
+        var origin = trimOrigin();
+        if (!origin) {
+          btn.textContent = 'Used by —';
+          btn.classList.add('muted');
+          btn.title = 'Set Bridge origin in Settings.';
+          return;
+        }
+        btn.textContent = 'Used by …';
+        var cssVar = cssVarForName(name);
+        fetch(origin + '/usages?cssVar=' + encodeURIComponent(cssVar))
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function(data) {
+            var count = (typeof data.count === 'number')
+              ? data.count
+              : ((data.components && data.components.length) || 0);
+            btn.classList.remove('muted');
+            btn.textContent = 'Used by ' + count;
+            insertUsagesDetail(name, rowEl, data.components || []);
+            btn.classList.add('open');
+          })
+          .catch(function(e) {
+            btn.textContent = 'Used by —';
+            btn.classList.add('muted');
+            btn.title = 'Bridge offline — ' + e.message;
+          });
+      }
+
+      // Build (or replace) the inline detail row listing affected components.
+      function insertUsagesDetail(name, rowEl, components) {
+        var prev = rowEl.nextSibling;
+        if (prev && prev._tkUsesFor === name) prev.parentNode.removeChild(prev);
+
+        var tr = document.createElement('tr');
+        tr._tkUsesFor = name;
+        var td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'tk-uses-detail';
+
+        if (!components.length) {
+          td.className += ' empty';
+          td.textContent = 'No components bind this token.';
+        } else {
+          components.forEach(function(c) {
+            var line = document.createElement('div');
+            line.className = 'tk-uses-row';
+            var role = document.createElement('span');
+            role.className = 'tk-uses-role';
+            role.textContent = c.role || '?';
+            line.appendChild(document.createTextNode((c.storyId || '?') + ' · '));
+            line.appendChild(role);
+            td.appendChild(line);
+          });
+        }
+        tr.appendChild(td);
+        if (rowEl.nextSibling) rowEl.parentNode.insertBefore(tr, rowEl.nextSibling);
+        else rowEl.parentNode.appendChild(tr);
       }
 
       // ════════════════════════════════════════════════════════════════════
