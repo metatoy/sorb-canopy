@@ -164,6 +164,29 @@
       .tk-empty { padding: 20px; text-align: center; color: #888; font-size: 11px; line-height: 1.6; }
       .tk-rawwrap { margin-top: 8px; }
       .tk-rawwrap[hidden] { display: none; }
+
+      /* ── connection-status pill ──────────────────────────────────────── */
+      .conn-pill {
+        display: flex; align-items: center; gap: 5px;
+        padding: 3px 7px; border-radius: 10px;
+        background: rgba(255,255,255,0.07);
+        font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+        color: #aaa; white-space: nowrap; flex-shrink: 0;
+        transition: color 0.25s, background 0.25s;
+        user-select: none;
+      }
+      .conn-dot {
+        width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        background: #555;
+        transition: background 0.25s;
+      }
+      .conn-pill[data-state="connected"]   { color: #86efac; background: rgba(22,163,74,0.15); }
+      .conn-pill[data-state="connected"]   .conn-dot { background: #22c55e; box-shadow: 0 0 4px #22c55e88; }
+      .conn-pill[data-state="error"]       { color: #fcd34d; background: rgba(217,119,6,0.15); }
+      .conn-pill[data-state="error"]       .conn-dot { background: #f59e0b; box-shadow: 0 0 4px #f59e0b88; }
+      .conn-pill[data-state="disconnected"]{ color: #888; background: rgba(255,255,255,0.05); }
+      .conn-pill[data-state="disconnected"]{ }
+      .conn-pill[data-state="disconnected"] .conn-dot { background: #555; box-shadow: none; }
     </style>
   </head>
   <body>
@@ -201,11 +224,16 @@
         </button>
       </div>
 
-      <!-- right: settings tab -->
+      <!-- right: settings tab + connection pill -->
       <div class="tb-group">
         <button class="tb-btn" id="tb-nav-settings" data-tip="Settings">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
         </button>
+        <div class="tb-divider"></div>
+        <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
+          <span class="conn-dot" id="connDot"></span>
+          <span id="connLabel">—</span>
+        </div>
       </div>
     </div>
 
@@ -1201,6 +1229,64 @@
           setSbStatus('Inserting ' + items.length + ' component' + (items.length === 1 ? '' : 's') + '…');
         } catch (e) { setSbStatus('Insert failed: ' + e.message, true); hideProgress(); }
       }
+
+      // ════════════════════════════════════════════════════════════════════
+      // CONNECTION-STATUS PILL — polls <bridgeOrigin>/health every 5 s
+      // ════════════════════════════════════════════════════════════════════
+      //
+      // State machine: 'disconnected' (initial) | 'connected' | 'error'
+      //   connected    — HTTP 200 from /health
+      //   error        — non-200 response (server reachable but unhealthy)
+      //   disconnected — network error, timeout, or no origin set
+
+      var connPollTimer = null;
+
+      var CONN_LABELS = { connected: 'Connected', disconnected: 'Disconnected', error: 'Error' };
+      var CONN_POLL_MS  = 5000;  // repeat interval
+      var CONN_TIMEOUT_MS = 3000; // AbortController timeout per request
+
+      function setConnState(state) {
+        var pill  = $('connPill');
+        var label = $('connLabel');
+        if (!pill || !label) return;
+        pill.setAttribute('data-state', state);
+        label.textContent = CONN_LABELS[state] || state;
+      }
+
+      function connOrigin() {
+        var raw = lsGet(LS.origin);
+        return (raw || DEFAULT_ORIGIN).trim().replace(/\/$/, '');
+      }
+
+      function connCheck() {
+        var origin = connOrigin();
+        if (!origin) { setConnState('disconnected'); return; }
+        var ctrl = new AbortController();
+        var timeoutId = setTimeout(function() { ctrl.abort(); }, CONN_TIMEOUT_MS);
+        fetch(origin + '/health', { signal: ctrl.signal })
+          .then(function(res) {
+            clearTimeout(timeoutId);
+            setConnState(res.ok ? 'connected' : 'error');
+          })
+          .catch(function(e) {
+            clearTimeout(timeoutId);
+            setConnState('disconnected');
+          });
+      }
+
+      function connStartPoll() {
+        if (connPollTimer) clearInterval(connPollTimer);
+        connCheck();                              // immediate first check
+        connPollTimer = setInterval(connCheck, CONN_POLL_MS);
+      }
+
+      // Re-start the poll immediately when the bridge origin changes in Settings.
+      $('origin').addEventListener('change', function() {
+        connStartPoll();
+      });
+
+      // Kick off the poll on load.
+      connStartPoll();
 
       // initialise — seed an empty working set (renders the table/chips), show tokens view
       setTokenSet({}, { silent: true });
