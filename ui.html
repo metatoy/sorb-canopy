@@ -181,6 +181,36 @@
       .tk-uses-detail .tk-uses-role { color: #1e3a5f; font-weight: 600; }
       .tk-uses-detail.empty { color: #999; }
 
+      /* ── Graft picker (§7 P4) ────────────────────────────────────────── */
+      .graft { margin-top: 10px; border: 1px solid #eee; border-radius: 6px; }
+      .graft-toggle {
+        width: 100%; text-align: left; padding: 7px 10px; border: 0; border-radius: 6px;
+        background: #f7f7f7; color: #333; font-size: 11px; font-weight: 600; cursor: pointer;
+      }
+      .graft-toggle:hover { background: #f0f0f0; }
+      .graft-body { padding: 8px 10px 10px; }
+      .graft-body[hidden] { display: none; }
+      .graft-row { display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap; }
+      .graft-lbl { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #666; flex: 1 1 120px; margin: 0; }
+      .graft-lbl select {
+        font-size: 11px; padding: 4px 6px; border: 1px solid #d9d9d9; border-radius: 5px; background: #fff;
+      }
+      .graft-arrow { color: #999; padding-bottom: 6px; }
+      .graft-result { margin-top: 10px; font-size: 10px; }
+      .graft-result[hidden] { display: none; }
+      .graft-cs-row {
+        display: flex; align-items: center; gap: 6px; padding: 3px 0;
+        border-bottom: 1px solid #f2f2f2; font-family: ui-monospace, Menlo, monospace;
+      }
+      .graft-cs-role { color: #1e3a5f; font-weight: 600; min-width: 56px; }
+      .graft-cs-arrow { color: #aaa; }
+      .graft-conflict { color: #c0341d; }
+      .graft-deprecated { color: #b8860b; }
+      .graft-section-title { font-weight: 600; color: #666; margin: 8px 0 3px; font-family: inherit; }
+      .graft-section-title.conflicts { color: #c0341d; }
+      .graft-apply { margin-top: 8px; }
+      .graft-empty { color: #999; padding: 6px 0; }
+
       /* ── connection-status pill ──────────────────────────────────────── */
       .conn-pill {
         display: flex; align-items: center; gap: 5px;
@@ -281,6 +311,26 @@
           </thead>
           <tbody id="tkBody"></tbody>
         </table>
+      </div>
+
+      <!-- ── Graft picker (§7 P4) — copy a source component's theme onto a target ── -->
+      <div class="graft" id="graftPanel">
+        <button class="graft-toggle" id="graftToggle" type="button">
+          <span id="graftToggleLabel">Graft a theme ▸</span>
+        </button>
+        <div class="graft-body" id="graftBody" hidden>
+          <div class="graft-row">
+            <label class="graft-lbl">Source
+              <select id="graftFrom"><option value="">— pick component —</option></select>
+            </label>
+            <span class="graft-arrow">→</span>
+            <label class="graft-lbl">Target
+              <select id="graftTo"><option value="">— pick component —</option></select>
+            </label>
+            <button class="secondary" id="graftPlanBtn" type="button">Plan graft</button>
+          </div>
+          <div class="graft-result" id="graftResult" hidden></div>
+        </div>
       </div>
 
       <div class="tk-rawwrap" id="tkRawWrap" hidden>
@@ -843,6 +893,207 @@
         tr.appendChild(td);
         if (rowEl.nextSibling) rowEl.parentNode.insertBefore(tr, rowEl.nextSibling);
         else rowEl.parentNode.appendChild(tr);
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // GRAFT PICKER (§7 P4) — copy a source component's theme onto a target,
+      // reconciled by role; apply routes through the SAME live /preview session
+      // path the table edit uses (write tokenSet → onTokenEdit → debounced PUT).
+      // ════════════════════════════════════════════════════════════════════
+
+      var graftOpen = false;
+      var lastGraftPlan = null;   // cache the last plan for Apply
+
+      // Token ids are dotted (e.g. "button.primary.bg.default"); tokenSet keys are
+      // the hyphenated NAME form. Map id -> working-set key by dots -> hyphens.
+      function idToName(id) { return String(id).replace(/\./g, '-'); }
+
+      $('graftToggle').onclick = function() {
+        graftOpen = !graftOpen;
+        $('graftBody').hidden = !graftOpen;
+        $('graftToggleLabel').textContent = graftOpen ? 'Graft a theme ▾' : 'Graft a theme ▸';
+        if (graftOpen) loadGraftComponents();
+      };
+
+      // Populate both <select>s from GET /artifacts (the captured stories list).
+      function loadGraftComponents() {
+        var origin = trimOrigin();
+        if (!origin) { setStatus('Set Bridge origin in Settings.', true); return; }
+        fetch(origin + '/artifacts')
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function(idx) {
+            var stories = idx.stories || {};
+            var ids = Object.keys(stories);
+            // De-dup by component name; fall back to storyId when component absent.
+            var seen = {}; var opts = [];
+            ids.forEach(function(id) {
+              var s = stories[id] || {};
+              var key = s.component || id;
+              if (seen[key]) return;
+              seen[key] = true;
+              opts.push({ value: id, label: key });
+            });
+            opts.sort(function(a, b) { return a.label.localeCompare(b.label); });
+            fillGraftSelect($('graftFrom'), opts);
+            fillGraftSelect($('graftTo'), opts);
+          })
+          .catch(function(e) { setStatus('Could not load components for graft: ' + e.message, true); });
+      }
+
+      function fillGraftSelect(sel, opts) {
+        sel.innerHTML = '';
+        var ph = document.createElement('option');
+        ph.value = ''; ph.textContent = '— pick component —';
+        sel.appendChild(ph);
+        opts.forEach(function(o) {
+          var el = document.createElement('option');
+          el.value = o.value; el.textContent = o.label;
+          sel.appendChild(el);
+        });
+      }
+
+      $('graftPlanBtn').onclick = function() {
+        var origin = trimOrigin();
+        if (!origin) { setStatus('Set Bridge origin in Settings.', true); return; }
+        var from = $('graftFrom').value;
+        var to = $('graftTo').value;
+        if (!from || !to) { setStatus('Pick a source and a target component.', true); return; }
+        if (from === to) { setStatus('Source and target must differ.', true); return; }
+        setStatus('Planning graft…');
+        fetch(origin + '/graft/plan', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ from: from, to: to }),
+        })
+          .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function(plan) {
+            lastGraftPlan = plan;
+            renderGraftPlan(plan);
+            setStatus('Graft plan ready.');
+          })
+          .catch(function(e) { setStatus('Graft plan failed: ' + e.message, true); });
+      };
+
+      // Render the changeset + conflicts. Conflicts are shown but NOT applied.
+      // A target flagged deprecated ($deprecated/deprecated) is warned + skipped.
+      function renderGraftPlan(plan) {
+        var box = $('graftResult');
+        box.hidden = false;
+        box.innerHTML = '';
+
+        var changeset = (plan && plan.changeset) || [];
+        var conflicts = (plan && plan.conflicts) || [];
+
+        if (!changeset.length && !conflicts.length) {
+          var none = document.createElement('div');
+          none.className = 'graft-empty';
+          none.textContent = 'No graftable roles between these components.';
+          box.appendChild(none);
+          return;
+        }
+
+        if (changeset.length) {
+          var title = document.createElement('div');
+          title.className = 'graft-section-title';
+          title.textContent = 'Changeset (' + changeset.length + ')';
+          box.appendChild(title);
+
+          changeset.forEach(function(row) {
+            var line = document.createElement('div');
+            line.className = 'graft-cs-row';
+            var deprecated = isDeprecatedTarget(row);
+
+            var role = document.createElement('span');
+            role.className = 'graft-cs-role';
+            role.textContent = row.role || '?';
+            line.appendChild(role);
+
+            line.appendChild(document.createTextNode(String(row.sourceTokenId || '?')));
+            var arrow = document.createElement('span');
+            arrow.className = 'graft-cs-arrow'; arrow.textContent = '→';
+            line.appendChild(arrow);
+            line.appendChild(document.createTextNode(String(row.targetTokenId || '?')));
+
+            if (deprecated) {
+              var dep = document.createElement('span');
+              dep.className = 'graft-deprecated';
+              dep.textContent = ' (deprecated — skipped)';
+              line.appendChild(dep);
+            }
+            box.appendChild(line);
+          });
+        }
+
+        if (conflicts.length) {
+          var ctitle = document.createElement('div');
+          ctitle.className = 'graft-section-title conflicts';
+          ctitle.textContent = 'Conflicts — NOT applied (' + conflicts.length + ')';
+          box.appendChild(ctitle);
+
+          conflicts.forEach(function(c) {
+            var line = document.createElement('div');
+            line.className = 'graft-cs-row graft-conflict';
+            var role = document.createElement('span');
+            role.className = 'graft-cs-role';
+            role.textContent = (c && c.role) || '?';
+            line.appendChild(role);
+            line.appendChild(document.createTextNode((c && c.reason) || 'role/type mismatch'));
+            box.appendChild(line);
+          });
+        }
+
+        // Apply acts ONLY on the changeset (never conflicts). User-click gated.
+        var applyable = changeset.filter(function(r) { return !isDeprecatedTarget(r); });
+        var apply = document.createElement('button');
+        apply.className = 'primary graft-apply';
+        apply.type = 'button';
+        apply.textContent = 'Apply ' + applyable.length + ' graft' + (applyable.length === 1 ? '' : 's');
+        apply.disabled = !applyable.length;
+        apply.onclick = function() { applyGraft(applyable); };
+        box.appendChild(apply);
+      }
+
+      function isDeprecatedTarget(row) {
+        if (!row) return false;
+        return row['$deprecated'] === true || row.deprecated === true ||
+               (row.target && row.target['$deprecated'] === true);
+      }
+
+      // Apply: write source values into tokenSet for each changeset target, then
+      // drive the EXISTING render + debounced live-preview PUT (onTokenEdit), the
+      // same path table edits use. Never writes source/main; Open-PR reads tokenSet.
+      function applyGraft(rows) {
+        if (!rows || !rows.length) return;
+        var applied = 0; var missing = [];
+        rows.forEach(function(row) {
+          var srcKey = idToName(row.sourceTokenId);
+          var tgtKey = idToName(row.targetTokenId);
+          if (!(srcKey in tokenSet)) {
+            // Some contracts carry the resolved value directly on the row.
+            if (typeof row.sourceValue !== 'undefined' && row.sourceValue !== null) {
+              tokenSet[tgtKey] = row.sourceValue;
+              applied++;
+            } else {
+              missing.push(srcKey);
+            }
+            return;
+          }
+          tokenSet[tgtKey] = tokenSet[srcKey];
+          applied++;
+        });
+
+        renderTokenTable();   // re-render the table from the mutated working set
+        onTokenEdit();        // syncs raw mirror + schedules the debounced /preview PUT
+
+        var msg = 'Grafted ' + applied + ' role' + (applied === 1 ? '' : 's') + ' into the working set';
+        msg += livePreviewId ? ' — live preview updating.' : ' — click Preview in app to push.';
+        if (missing.length) msg += ' (' + missing.length + ' source token(s) not in set, skipped)';
+        setStatus(msg);
       }
 
       // ════════════════════════════════════════════════════════════════════
