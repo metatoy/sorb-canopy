@@ -3,41 +3,85 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      :root { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 12px; }
+      /* ── Direction A "Quiet Instrument" brand substrate ──────────────── */
+      :root {
+        --snow:#F6F4EF; --surface:#FFFFFF; --surface-2:#FBFAF7;
+        --ink:#211F1C; --ink-2:#4A453F; --soft:#6A635B; --taupe:#9A9086;
+        --line:#E7E1D8; --line-2:#F0EBE3;
+        --blaze:#F26722; --blaze-ink:#B14712; --blaze-bg:#FBE7DA;
+        --ok:#2E7A4E; --ok-bg:#E4F0E9; --err:#C0341D;
+        --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,monospace;
+        --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+        font-family:var(--sans); font-size:12px;
+      }
       * { box-sizing: border-box; }
-      body { margin: 0; color: #1a1a1a; overflow-x: hidden; }
+      body { margin:0; color:var(--ink); background:var(--snow); overflow-x:hidden;
+        -webkit-font-smoothing:antialiased; }
 
-      /* ── toolbar ────────────────────────────────────────────────────── */
-      .toolbar {
-        display: flex; align-items: center; justify-content: space-between;
-        background: #2d2d2d; padding: 5px 8px;
-        border-bottom: 1px solid #1a1a1a;
-        width: 100%; overflow: hidden;
-      }
-      .tb-group { display: flex; align-items: center; gap: 1px; flex-shrink: 0; }
-      .tb-btn {
-        display: flex; align-items: center; justify-content: center;
-        width: 26px; height: 26px; border: 0; border-radius: 5px;
-        background: transparent; color: #ffffff; cursor: pointer; padding: 0;
-        position: relative; flex-shrink: 0;
-      }
-      .tb-btn svg { display: block; pointer-events: none; }
-      .tb-btn:hover { background: #3d3d3d; color: #7dd3fc; }
-      .tb-btn:active { background: #4d4d4d; color: #38bdf8; }
-      .tb-btn.active { background: #1e3a5f; color: #7dd3fc; }
-      .tb-btn[disabled] { opacity: 0.3; cursor: default; }
-      .tb-btn[disabled]:hover { background: transparent; color: #ffffff; }
-      /* tooltip — clipped by parent overflow:hidden, so use fixed positioning trick */
-      .tb-btn::after {
-        content: attr(data-tip); pointer-events: none; opacity: 0;
-        position: fixed; top: auto; left: auto;
-        margin-top: 31px;
-        background: #1a1a1a; color: #fff; font-size: 10px; white-space: nowrap;
-        padding: 3px 6px; border-radius: 4px; z-index: 9999;
-        transition: opacity 0.15s;
-      }
-      .tb-btn:hover::after { opacity: 1; }
-      .tb-divider { width: 1px; height: 16px; background: #444; margin: 0 2px; flex-shrink: 0; }
+      /* ── header (persistent) ─────────────────────────────────────────── */
+      .hdr { display:flex; align-items:center; gap:10px; padding:9px 12px;
+        border-bottom:1px solid var(--line-2); background:var(--surface); }
+      .mark { display:flex; align-items:center; gap:7px; }
+      .glyph { width:16px; height:16px; border-radius:5px; background:var(--blaze); flex:0 0 auto; }
+      .wm { font-weight:650; font-size:13px; letter-spacing:-.01em; }
+      .hdr .sp { flex:1; }
+      .qm { width:20px; height:20px; border-radius:50%; border:1px solid var(--line);
+        color:var(--soft); font-size:12px; line-height:1; display:flex; align-items:center;
+        justify-content:center; cursor:pointer; background:var(--surface); padding:0; flex:0 0 auto; }
+      .qm:hover { color:var(--ink); border-color:var(--taupe); }
+
+      /* ── tabs ────────────────────────────────────────────────────────── */
+      .tabs { display:flex; gap:2px; padding:0 8px; border-bottom:1px solid var(--line);
+        background:var(--surface); }
+      .tabs[hidden] { display:none; }
+      .tab { padding:9px 12px; font-size:12.5px; color:var(--soft); font-weight:550;
+        border:0; border-radius:0; background:transparent; border-bottom:2px solid transparent;
+        margin-bottom:-1px; cursor:pointer; font-family:inherit; appearance:none; -webkit-appearance:none; }
+      .tab:hover { color:var(--ink-2); }
+      .tab.active { color:var(--ink); border-bottom-color:var(--blaze); font-weight:650; }
+
+      /* ── intro (first-open front door) ───────────────────────────────── */
+      .intro { display:none; flex-direction:column; padding:20px 20px 16px; min-height:520px; }
+      .intro.show { display:flex; }
+      .h1 { font-size:19px; line-height:1.25; letter-spacing:-.01em; font-weight:600;
+        margin:2px 0 0; text-wrap:balance; }
+      .disc { font-size:9px; color:var(--taupe); margin:8px 0 0; line-height:1.4; }
+      .sub { font-size:12.5px; color:var(--ink-2); margin:14px 0 0; font-weight:500; }
+      .feats { display:flex; gap:8px; margin:16px 0 0; }
+      .feat { flex:1; border:1px solid var(--line); border-radius:8px; padding:9px 8px; }
+      .feat .fl { font-size:11px; font-weight:650; }
+      .feat .fc { font-size:9.5px; color:var(--soft); margin-top:2px; line-height:1.3; }
+      .cards { display:flex; flex-direction:column; gap:9px; margin:16px 0 0; }
+      .card { border-radius:9px; padding:12px 13px; border:1px solid transparent;
+        text-align:left; width:100%; font-family:inherit; cursor:pointer; display:block; }
+      .card .ct { font-size:13px; font-weight:650; display:flex; align-items:center; gap:7px; }
+      .card .cc { font-size:11px; margin-top:3px; line-height:1.35; }
+      .card.pri { background:var(--blaze); color:#fff; }
+      .card.pri .cc { color:#FCE6D9; }
+      .card.sec { background:var(--surface); border-color:var(--line); color:var(--ink); }
+      .card.sec .cc { color:var(--soft); }
+      .card[disabled] { opacity:.55; cursor:not-allowed; }
+      .card .arw { margin-left:auto; opacity:.85; font-size:14px; }
+      .card .soon { margin-left:auto; font-size:9px; font-family:var(--mono); text-transform:uppercase;
+        letter-spacing:.06em; opacity:.95; }
+      .links { display:flex; gap:14px; margin-top:auto; padding-top:16px; font-size:11px; }
+      .links a { color:var(--blaze-ink); text-decoration:none; font-weight:550; }
+      .links a:hover { text-decoration:underline; }
+
+      /* ── primary CTA + secondary actions (tokens foot) ───────────────── */
+      .foot { border-top:1px solid var(--line); padding:11px 13px 12px; background:var(--surface);
+        margin:12px -14px -14px; }
+      .cta { width:100%; background:var(--blaze); color:#fff; border:none; border-radius:8px;
+        padding:10px; font-size:13px; font-weight:650; display:flex; align-items:center;
+        justify-content:center; gap:8px; }
+      .cta[disabled] { opacity:.5; cursor:default; }
+      .cta .n { background:rgba(255,255,255,.22); border-radius:999px; padding:1px 7px;
+        font-size:11px; font-family:var(--mono); }
+      .sec-actions { display:flex; gap:6px; margin-top:8px; }
+      .ghost { flex:1; border:1px solid var(--line); background:var(--surface); border-radius:7px;
+        padding:6px 4px; font-size:10.5px; color:var(--ink-2); text-align:center; font-weight:550; }
+      .ghost:hover:not([disabled]) { border-color:var(--taupe); }
+      .ghost[disabled] { color:var(--taupe); opacity:.7; cursor:default; }
 
       /* ── views ─────────────────────────────────────────────────────── */
       .view { display: none; padding: 14px; }
@@ -58,12 +102,12 @@
         flex: 1; border: 0; border-radius: 6px; padding: 9px 12px; font-size: 12px;
         font-weight: 600; cursor: pointer;
       }
-      .primary { background: #16a34a; color: #fff; }
-      .secondary { background: #eee; color: #1a1a1a; }
-      .status { margin-top: 10px; font-size: 11px; min-height: 15px; color: #555; }
-      .status a { color: #16a34a; }
-      .status.err { color: #c0341d; }
-      .hint { color: #888; font-weight: 400; font-size: 11px; }
+      .primary { background: var(--blaze); color: #fff; }
+      .secondary { background: var(--line-2); color: var(--ink); }
+      .status { margin-top: 10px; font-size: 11px; min-height: 15px; color: var(--soft); line-height: 1.5; }
+      .status a { color: var(--blaze-ink); }
+      .status.err { color: var(--err); }
+      .hint { color: var(--soft); font-weight: 400; font-size: 11px; }
 
       /* ── storybook table view ──────────────────────────────────────── */
       .sb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -74,7 +118,7 @@
         font-size: 10px; padding: 3px 9px; border-radius: 11px; border: 1px solid #d9d9d9;
         background: #fff; color: #555; cursor: pointer; user-select: none; flex: 0 0 auto;
       }
-      .sb-chip.active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+      .sb-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
       .sb-table-wrap { max-height: 340px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
       .sb-table { width: 100%; border-collapse: collapse; font-size: 11px; }
       .sb-table th {
@@ -96,14 +140,14 @@
       }
       .sb-bulk {
         display: flex; align-items: center; gap: 6px; margin-top: 10px;
-        padding: 8px; background: #f0f6ff; border: 1px solid #cfe0f5; border-radius: 6px;
+        padding: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
       }
       .sb-bulk[hidden] { display: none; }
-      .sb-bulk-count { font-size: 11px; font-weight: 600; color: #1e3a5f; margin-right: auto; }
+      .sb-bulk-count { font-size: 11px; font-weight: 600; color: var(--ink); margin-right: auto; }
       .sb-bulk button { flex: 0 0 auto; padding: 6px 9px; font-size: 11px; }
       .sb-progress { margin-top: 8px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
       .sb-progress[hidden] { display: none; }
-      .sb-progress-bar { height: 100%; width: 0; background: #16a34a; transition: width 0.15s; }
+      .sb-progress-bar { height: 100%; width: 0; background: var(--blaze); transition: width 0.15s; }
       .sb-empty { padding: 20px; text-align: center; color: #888; font-size: 11px; line-height: 1.6; }
       .sb-check { display: flex; align-items: center; gap: 6px; font-weight: 600; margin: 10px 0 4px; }
       .sb-check input { width: auto; margin: 0; cursor: pointer; }
@@ -120,14 +164,14 @@
       }
       .tk-raw-btn svg { display: block; pointer-events: none; }
       .tk-raw-btn:hover { background: #f0f0f0; }
-      .tk-raw-btn.active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+      .tk-raw-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
       .tk-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 8px; }
       .tk-filters[hidden] { display: none; }
       .tk-chip {
         font-size: 10px; padding: 3px 9px; border-radius: 11px; border: 1px solid #d9d9d9;
         background: #fff; color: #555; cursor: pointer; user-select: none; flex: 0 0 auto;
       }
-      .tk-chip.active { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+      .tk-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
       .tk-table-wrap { max-height: 340px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; margin-top: 8px; }
       .tk-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
       .tk-table th {
@@ -168,73 +212,71 @@
       /* ── connection-status pill ──────────────────────────────────────── */
       .conn-pill {
         display: flex; align-items: center; gap: 5px;
-        padding: 3px 7px; border-radius: 10px;
-        background: rgba(255,255,255,0.07);
-        font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
-        color: #aaa; white-space: nowrap; flex-shrink: 0;
+        padding: 3px 8px; border-radius: 999px;
+        background: var(--line-2);
+        font-size: 10px; font-weight: 600; letter-spacing: 0.02em; font-family: var(--mono);
+        color: var(--soft); white-space: nowrap; flex-shrink: 0;
         transition: color 0.25s, background 0.25s;
         user-select: none;
       }
       .conn-dot {
         width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-        background: #555;
+        background: var(--taupe);
         transition: background 0.25s;
       }
-      .conn-pill[data-state="connected"]   { color: #86efac; background: rgba(22,163,74,0.15); }
-      .conn-pill[data-state="connected"]   .conn-dot { background: #22c55e; box-shadow: 0 0 4px #22c55e88; }
-      .conn-pill[data-state="error"]       { color: #fcd34d; background: rgba(217,119,6,0.15); }
-      .conn-pill[data-state="error"]       .conn-dot { background: #f59e0b; box-shadow: 0 0 4px #f59e0b88; }
-      .conn-pill[data-state="disconnected"]{ color: #888; background: rgba(255,255,255,0.05); }
-      .conn-pill[data-state="disconnected"]{ }
-      .conn-pill[data-state="disconnected"] .conn-dot { background: #555; box-shadow: none; }
+      .conn-pill[data-state="connected"]   { color: var(--ok); background: var(--ok-bg); }
+      .conn-pill[data-state="connected"]   .conn-dot { background: var(--ok); }
+      .conn-pill[data-state="error"]       { color: var(--blaze-ink); background: var(--blaze-bg); }
+      .conn-pill[data-state="error"]       .conn-dot { background: var(--blaze); }
+      .conn-pill[data-state="disconnected"]{ color: var(--soft); background: var(--line-2); }
+      .conn-pill[data-state="disconnected"] .conn-dot { background: var(--taupe); }
     </style>
   </head>
   <body>
 
-    <!-- ── TOOLBAR (always visible) ──────────────────────────────────── -->
-    <div class="toolbar">
+    <!-- ── HEADER (always visible) ───────────────────────────────────── -->
+    <div class="hdr">
+      <div class="mark"><div class="glyph"></div><div class="wm">Sorb</div></div>
+      <div class="sp"></div>
+      <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
+        <span class="conn-dot" id="connDot"></span>
+        <span id="connLabel">—</span>
+      </div>
+      <button class="qm" id="helpBtn" title="What is Sorb?" aria-label="What is Sorb?">?</button>
+    </div>
 
-      <!-- left: view tabs -->
-      <div class="tb-group">
-        <button class="tb-btn active" id="tb-nav-tokens" data-tip="Tokens">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.114 8.063V7.9c1.005-.102 1.497-.615 1.497-1.6V4.503c0-1.094.39-1.538 1.354-1.538h.273V2h-.376C2.25 2 1.49 2.759 1.49 4.352v1.524c0 1.094-.376 1.456-1.49 1.456v1.299c1.114 0 1.49.362 1.49 1.456v1.524c0 1.593.759 2.352 2.372 2.352h.376v-.964h-.273c-.964 0-1.354-.444-1.354-1.538V9.663c0-.984-.492-1.497-1.497-1.6M14.886 7.9v.164c-1.005.103-1.497.616-1.497 1.6v1.798c0 1.094-.39 1.538-1.354 1.538h-.273v.964h.376c1.613 0 2.372-.759 2.372-2.352v-1.524c0-1.094.376-1.456 1.49-1.456v-1.3c-1.114 0-1.49-.362-1.49-1.456V4.352C14.51 2.759 13.75 2 12.138 2h-.376v.964h.273c.964 0 1.354.444 1.354 1.538V6.3c0 .984.492 1.497 1.497 1.6M7.5 11.5V9.207l-1.621 1.621-.707-.707L6.792 8.5H4.5v-1h2.293L5.172 5.879l.707-.707L7.5 6.792V4.5h1v2.293l1.621-1.621.707.707L9.208 7.5H11.5v1H9.207l1.621 1.621-.707.707L8.5 9.208V11.5z"/></svg>
+    <!-- ── INTRO (first-open front door; re-openable via the ? button) ── -->
+    <div class="intro" id="introScreen">
+      <div class="h1">&ldquo;Looks right in Figma&rdquo; should mean right in code.</div>
+      <div class="disc">Works with Figma. Not affiliated with, or endorsed by, Figma. Figma is a trademark of Figma, Inc.</div>
+      <div class="sub">Propose the change. See it live. Verify before you merge.</div>
+      <div class="feats">
+        <div class="feat"><div class="fl">Propose</div><div class="fc">Change a token in your design tool.</div></div>
+        <div class="feat"><div class="fl">See it live</div><div class="fc">Watch it land in the running app.</div></div>
+        <div class="feat"><div class="fl">Verify</div><div class="fc">Confirm it before you merge.</div></div>
+      </div>
+      <div class="cards">
+        <button class="card pri" id="pathDemo" disabled>
+          <div class="ct">Try the live demo<span class="soon">Soon</span></div>
+          <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
         </button>
-        <button class="tb-btn" id="tb-nav-storybook" data-tip="Storybook">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/></svg>
+        <button class="card sec" id="pathConnect">
+          <div class="ct">Connect your project<span class="arw">&rarr;</span></div>
+          <div class="cc">A short guided setup — point Sorb at your own running app.</div>
         </button>
       </div>
-
-      <!-- center: actions -->
-      <div class="tb-group">
-        <button class="tb-btn" id="tb-import" data-tip="Reload from App">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.5 10a.5.5 0 0 1-.5-.5v-8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 0 0 1h2A1.5 1.5 0 0 0 14 9.5v-8A1.5 1.5 0 0 0 12.5 0h-9A1.5 1.5 0 0 0 2 1.5v8A1.5 1.5 0 0 0 3.5 11h2a.5.5 0 0 0 0-1z"/><path fill-rule="evenodd" d="M7.646 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 14.293V5.5a.5.5 0 0 0-1 0v8.793l-2.146-2.147a.5.5 0 0 0-.708.708z"/></svg>
-        </button>
-        <button class="tb-btn" id="tb-export" data-tip="Reload from Figma">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1z"/><path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708z"/></svg>
-        </button>
-        <div class="tb-divider"></div>
-        <button class="tb-btn" id="tb-preview" data-tip="Preview in app">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/></svg>
-        </button>
-        <button class="tb-btn" id="tb-preview-storybook" data-tip="Preview in Storybook">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/></svg>
-        </button>
-        <button class="tb-btn" id="tb-syncvars" data-tip="Reload from Storybook">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 0a5.53 5.53 0 0 0-3.594 1.342c-.766.66-1.321 1.52-1.464 2.383C1.266 4.095 0 5.555 0 7.318 0 9.366 1.708 11 3.781 11H7.5V5.5a.5.5 0 0 1 1 0V11h4.188C14.502 11 16 9.57 16 7.773c0-1.636-1.242-2.969-2.834-3.194C12.923 1.999 10.69 0 8 0m-.354 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 14.293V11h-1v3.293l-2.146-2.147a.5.5 0 0 0-.708.708z"/></svg>
-        </button>
+      <div class="links">
+        <a href="https://metatoy.com/sorb" target="_blank" rel="noopener">Learn more</a>
+        <a href="https://metatoy.com/sorb/docs" target="_blank" rel="noopener">Docs</a>
+        <a href="https://metatoy.com/sorb/beta" target="_blank" rel="noopener">Join the beta</a>
       </div>
+    </div>
 
-      <!-- right: settings tab + connection pill -->
-      <div class="tb-group">
-        <button class="tb-btn" id="tb-nav-settings" data-tip="Settings">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
-        </button>
-        <div class="tb-divider"></div>
-        <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
-          <span class="conn-dot" id="connDot"></span>
-          <span id="connLabel">—</span>
-        </div>
-      </div>
+    <!-- ── TABS (Tokens / Components / Settings) ─────────────────────────── -->
+    <div class="tabs" id="tabs">
+      <button class="tab active" id="tb-nav-tokens">Tokens</button>
+      <button class="tab" id="tb-nav-storybook">Components</button>
+      <button class="tab" id="tb-nav-settings">Settings</button>
     </div>
 
     <!-- ── TOKENS VIEW ─────────────────────────────────────────────────── -->
@@ -245,6 +287,9 @@
           <span class="hint" style="font-weight:400;cursor:pointer;">
             <input type="checkbox" id="autoSync" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync
           </span>
+          <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+          </button>
           <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
           </button>
@@ -281,15 +326,29 @@
       </div>
 
       <div class="status" id="status"></div>
+
+      <div class="foot">
+        <button class="cta" id="cta">
+          <span id="ctaLabel">Load from App</span><span class="n" id="ctaCount" hidden></span>
+        </button>
+        <div class="sec-actions">
+          <button class="ghost" id="ghLoad">Load from App</button>
+          <button class="ghost" id="ghSync">Sync Variables</button>
+          <button class="ghost off" id="ghPr" disabled>Open PR</button>
+        </div>
+      </div>
     </div>
 
     <!-- ── STORYBOOK VIEW ─────────────────────────────────────────────── -->
     <div id="view-storybook" class="view">
       <div class="sb-head">
-        <label style="margin:0;">Insert from Storybook <span class="hint">(captured components)</span></label>
-        <button class="secondary sb-refresh" id="loadStories" title="Refresh story list">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
-        </button>
+        <label style="margin:0;">Components <span class="hint">(insert captured Storybook stories)</span></label>
+        <div style="display:flex;gap:6px;align-items:center;flex:0 0 auto;">
+          <button class="secondary" id="tb-preview-storybook" title="Preview current tokens in Storybook" style="flex:0 0 auto;padding:7px 10px;font-size:11px;">Preview</button>
+          <button class="secondary sb-refresh" id="loadStories" title="Refresh story list">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="sb-filters" id="sbFilters" hidden></div>
@@ -334,7 +393,10 @@
       <input id="storybookUrl" placeholder="http://localhost:6006" />
 
       <label>GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
-      <input id="githubUrl" placeholder="https://github.com/nhunsaker/figree-demo/edit/main/tokens/semantic.json" />
+      <input id="githubUrl" placeholder="https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json" />
+
+      <label>API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
+      <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
 
       <label class="sb-check" style="margin-top:14px;">
         <input type="checkbox" id="labelToggle" checked />
@@ -386,24 +448,37 @@
       }
 
       // ── persisted settings ─────────────────────────────────────────────
-      var LS = { origin: 'sorb.origin', app: 'sorb.appUrl', gh: 'sorb.githubUrl', sb: 'sorb.storybookUrl', auto: 'sorb.autoSync', label: 'sorb.labelInserts' };
+      var LS = { origin: 'sorb.origin', app: 'sorb.appUrl', gh: 'sorb.githubUrl', sb: 'sorb.storybookUrl', auto: 'sorb.autoSync', label: 'sorb.labelInserts',
+                 onb: 'sorb.onboarded', onbPath: 'sorb.onboardPath', demo: 'sorb.demoMode', apiKey: 'sorb.apiKey' };
       function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
       function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
 
       var DEFAULT_ORIGIN = 'http://localhost:7777';
       var DEFAULT_APP    = 'http://localhost:5173';
-      var DEFAULT_GH     = 'https://github.com/nhunsaker/figree-demo/edit/main/tokens/semantic.json';
+      var DEFAULT_GH     = 'https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json';
       var DEFAULT_SB     = 'http://localhost:6006';
+
+      // ── hosted demo path (U4) — filled at ship/deploy time, NEVER committed ──────
+      // DEMO_PK: read-only sorb_pk_ from Keychain `sorb-publish-only` (safe to ship —
+      // 403s on writes). DEMO_APP: the deployed public demo-app origin. DEMO_PREVIEW_ID:
+      // the pre-seeded preview in the demo tenant. Demo path lights up only when both
+      // DEMO_PK and DEMO_APP are set.
+      var DEMO_ORIGIN     = 'https://bridge.sorbcloud.com';
+      var DEMO_APP        = '';
+      var DEMO_PK         = '';
+      var DEMO_PREVIEW_ID = 'tjzdeg4-';
 
       $('origin').value       = lsGet(LS.origin) || DEFAULT_ORIGIN;
       $('appUrl').value       = lsGet(LS.app)    || DEFAULT_APP;
       $('githubUrl').value    = lsGet(LS.gh)     || DEFAULT_GH;
       $('storybookUrl').value = lsGet(LS.sb)     || DEFAULT_SB;
+      $('apiKey').value       = lsGet(LS.apiKey);
 
       $('origin').addEventListener('change',       function(e) { lsSet(LS.origin, e.target.value); });
       $('appUrl').addEventListener('change',       function(e) { lsSet(LS.app,    e.target.value); });
       $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); });
       $('storybookUrl').addEventListener('change', function(e) { lsSet(LS.sb,     e.target.value); });
+      $('apiKey').addEventListener('change',       function(e) { lsSet(LS.apiKey, e.target.value.trim()); });
 
       // Label toggle (default ON — only false when explicitly saved as 'no').
       $('labelToggle').checked = lsGet(LS.label) !== 'no';
@@ -412,13 +487,29 @@
 
       function trimOrigin() { return $('origin').value.trim().replace(/\/$/, ''); }
 
+      // The active bearer key for hosted-bridge calls: the read-only demo pk in demo
+      // mode, else the Settings "API key" (blank for a local `sorb dev` bridge → no
+      // header sent, unchanged behavior).
+      function activeKey() {
+        if (lsGet(LS.demo) === 'true') return DEMO_PK;
+        return ((($('apiKey') && $('apiKey').value) || lsGet(LS.apiKey) || '')).trim();
+      }
+      // fetch wrapper that adds `Authorization: Bearer <key>` when a key is set,
+      // preserving any existing headers. Used for every bridge call except /health.
+      function bfetch(url, opts) {
+        opts = opts || {};
+        var key = activeKey();
+        if (key) opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + key });
+        return fetch(url, opts);
+      }
+
       // Best-effort self-report of an inserted component's geometry (+ bound-field
       // tally in meta) to the bridge /verify endpoint. Fired from the main thread's
       // sorb-verify message.
       function verifyInsert(storyId, bbox, meta) {
         var origin = trimOrigin();
         if (!origin || !storyId) return;
-        fetch(origin + '/verify', {
+        bfetch(origin + '/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ storyId: storyId, bbox: bbox, meta: meta }),
@@ -484,11 +575,98 @@
         setStatus(on ? 'Auto-sync on — watching Figma Variables.' : 'Auto-sync off.');
       });
 
-      // ── toolbar action wiring ──────────────────────────────────────────
-      $('tb-import').onclick   = function() { $('committed').click(); };
-      $('tb-export').onclick   = function() { $('reload').click(); };
-      $('tb-preview').onclick  = function() { $('preview').click(); };
-      $('tb-syncvars').onclick = function() { $('syncvars').click(); };
+      // ── CTA state machine + secondary actions (replaces the icon toolbar) ─
+      // One primary CTA walks Load → Preview → Open PR against the working set +
+      // live-session state; the hidden proxy buttons (#committed/#preview/#openpr/
+      // #syncvars/#reload) stay the handler home, so the §2 contracts are
+      // unchanged — the new chrome only clicks them.
+      function ctaState() {
+        if (!Object.keys(tokenSet).length) return 'load';
+        if (!livePreviewId) return 'preview';
+        return 'openpr';                          // #openpr surfaced as the CTA terminal state
+      }
+      function updateCta() {
+        var cta = $('cta');
+        if (!cta) return;                         // defensive (teardown / unload)
+        var label = $('ctaLabel'), count = $('ctaCount');
+        // Demo mode uses a read-only pk (writes 403) — no editing; the CTA opens the
+        // pre-seeded hosted preview, and the write-oriented ghosts are disabled.
+        if (lsGet(LS.demo) === 'true') {
+          label.textContent = 'Open the live demo'; count.hidden = true;
+          cta.setAttribute('data-act', 'demo');
+          $('ghSync').disabled = true;
+          $('ghPr').disabled = true; $('ghPr').classList.add('off');
+          return;
+        }
+        $('ghSync').disabled = false;
+        var st = ctaState(), n = Object.keys(tokenSet).length;
+        if (st === 'load') {
+          label.textContent = 'Load from App'; count.hidden = true;
+          cta.setAttribute('data-act', 'committed');
+        } else if (st === 'preview') {
+          label.textContent = 'Preview in app';
+          count.textContent = n; count.hidden = (n === 0);
+          cta.setAttribute('data-act', 'preview');
+        } else {
+          label.textContent = 'Open PR';
+          count.textContent = n; count.hidden = (n === 0);
+          cta.setAttribute('data-act', 'openpr');
+        }
+        $('ghPr').disabled = !livePreviewId;      // Open-PR ghost live only with a session
+        $('ghPr').classList.toggle('off', !livePreviewId);
+      }
+      $('cta').onclick      = function() {
+        var t = $('cta').getAttribute('data-act');
+        if (t === 'demo') {
+          var u = DEMO_APP + (DEMO_APP.indexOf('?') !== -1 ? '&' : '?') + 'preview=' + DEMO_PREVIEW_ID;
+          window.open(u, '_blank');
+          post('notify', { message: 'Opening the live demo…' });
+          return;
+        }
+        if (t) $(t).click();
+      };
+      $('ghLoad').onclick   = function() { $('committed').click(); };
+      $('ghSync').onclick   = function() { $('syncvars').click(); };
+      $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
+      $('ghReload').onclick = function() { $('reload').click(); };
+
+      // ── two-path intro (first-open front door) + re-openable help ────────
+      function showIntro() {
+        $('introScreen').classList.add('show');
+        $('tabs').hidden = true;
+        $('view-tokens').style.display = 'none';
+        $('view-storybook').style.display = 'none';
+        $('view-settings').style.display = 'none';
+      }
+      function showMain() {
+        $('introScreen').classList.remove('show');
+        $('tabs').hidden = false;
+        showView('tokens');
+        updateCta();
+      }
+      $('helpBtn').onclick = showIntro;
+      $('pathConnect').onclick = function() {
+        lsSet(LS.onb, 'true'); lsSet(LS.onbPath, 'connect'); lsSet(LS.demo, '');   // leaving demo mode
+        showMain();
+        setStatus('Set your Bridge origin (and API key, if hosted) in Settings, then Load from App.');
+      };
+      // "Try the live demo" — hosted demo path (U4). Lights up only when a read-only demo
+      // key (DEMO_PK, from Keychain `sorb-publish-only`) AND the deployed demo-app origin
+      // (DEMO_APP) are both set; both are injected at ship/deploy time, never committed.
+      var DEMO_ENABLED = DEMO_PK !== '' && DEMO_APP !== '';
+      if (DEMO_ENABLED) {
+        $('pathDemo').disabled = false;
+        var demoSoon = $('pathDemo').querySelector('.soon');
+        if (demoSoon) demoSoon.replaceWith(Object.assign(document.createElement('span'), { className: 'arw', innerHTML: '&rarr;' }));
+        $('pathDemo').onclick = function() {
+          lsSet(LS.onb, 'true'); lsSet(LS.onbPath, 'demo'); lsSet(LS.demo, 'true');
+          lsSet(LS.origin, DEMO_ORIGIN); lsSet(LS.app, DEMO_APP);           // point at the hosted demo
+          $('origin').value = DEMO_ORIGIN; $('appUrl').value = DEMO_APP;
+          connStartPoll();
+          showMain();
+          $('committed').click();                                          // read-only load of demo tokens
+        };
+      }
 
       // ── Reload from Figma ──────────────────────────────────────────────
       $('reload').onclick = function() { post('reload-tokens'); };
@@ -500,7 +678,7 @@
         setStatus('Fetching resolved tokens…');
         var tokens;
         try {
-          var res = await fetch(origin + '/tokens/resolved');
+          var res = await bfetch(origin + '/tokens/resolved');
           if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 404 ? ' — run `sorb-seed resolve` first' : ''));
           var data = await res.json();
           tokens = Array.isArray(data) ? data : data.tokens;
@@ -515,7 +693,7 @@
         var origin = trimOrigin();
         if (!origin) return setStatus('Set Bridge origin in Settings.', true);
         try {
-          var res = await fetch(origin + '/tokens/latest');
+          var res = await bfetch(origin + '/tokens/latest');
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var json = await res.json();
           setTokenSet(json, { silent: true });
@@ -530,13 +708,14 @@
         if (!origin || !appUrl) return setStatus('Set Bridge origin and App URL in Settings.', true);
         setStatus('Posting preview…');
         try {
-          var res = await fetch(origin + '/preview', {
+          var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
             body: JSON.stringify(tokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var d = await res.json();
           livePreviewId = d.id;
+          updateCta();                              // session live → CTA becomes Open PR
           var url = appUrl + (appUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Preview ready: ' + d.id });
@@ -553,7 +732,7 @@
         if (!sbUrl)  return setStatus('Set Storybook URL in Settings.', true);
         setStatus('Posting preview…');
         try {
-          var res = await fetch(origin + '/preview', {
+          var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
             body: JSON.stringify(tokenSet),
           });
@@ -576,7 +755,7 @@
         setStatus('Merging with committed tokens…');
         var committed;
         try {
-          var res = await fetch(origin + '/tokens/latest');
+          var res = await bfetch(origin + '/tokens/latest');
           if (!res.ok) throw new Error('HTTP ' + res.status);
           committed = await res.json();
         } catch(e) { return setStatus('Could not load committed tokens: ' + e.message, true); }
@@ -752,6 +931,7 @@
         renderTokenChips();
         renderTokenTable();
         syncRawFromSet();
+        updateCta();
         if (!opts.silent) setStatus(Object.keys(tokenSet).length + ' token(s) loaded.');
       }
 
@@ -829,6 +1009,7 @@
       // ── post-mutation hook (called by the table on edit + delete) ────────
       function onTokenEdit() {
         syncRawFromSet();                          // keep raw mirror current
+        updateCta();                               // reflect the changed working-set count
         if (!$('autoSync').checked) return;        // no push when auto-sync off
         if (livePreviewId) schedulePush();
         else setStatus('Click Preview in app to start live editing.');
@@ -843,7 +1024,7 @@
       async function pushPreview() {
         if (!livePreviewId) return;
         try {
-          var res = await fetch(trimOrigin() + '/preview/' + livePreviewId, {
+          var res = await bfetch(trimOrigin() + '/preview/' + livePreviewId, {
             method: 'PUT', headers: { 'content-type': 'text/plain' },
             body: JSON.stringify(tokenSet),
           });
@@ -857,7 +1038,8 @@
         if (!livePreviewId) return;
         var id = livePreviewId;
         livePreviewId = null;                       // clear first (best-effort delete)
-        try { await fetch(trimOrigin() + '/preview/' + id, { method: 'DELETE' }); }
+        updateCta();                                // session ended → CTA back to Preview
+        try { await bfetch(trimOrigin() + '/preview/' + id, { method: 'DELETE' }); }
         catch (e) { /* best-effort; ignore */ }
       }
       window.addEventListener('unload', function() { endSession(); });
@@ -1006,7 +1188,7 @@
         var origin = trimOrigin();
         if (!origin) return setSbStatus('Set Bridge origin in Settings.', true);
         setSbStatus('Loading…');
-        fetch(origin + '/artifacts')
+        bfetch(origin + '/artifacts')
           .then(function(res) {
             if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 404 ? ' — run `sorb-seed capture` first' : ''));
             return res.json();
@@ -1194,7 +1376,7 @@
       // stories), so cache by importPath and dig out each story's root by id.
       async function fetchComponentFile(origin, importPath, anyStoryId) {
         if (sbArtifactCache[importPath]) return sbArtifactCache[importPath];
-        var res = await fetch(origin + '/artifact?id=' + encodeURIComponent(anyStoryId));
+        var res = await bfetch(origin + '/artifact?id=' + encodeURIComponent(anyStoryId));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var art = await res.json();
         sbArtifactCache[importPath] = art;
@@ -1288,9 +1470,23 @@
       // Kick off the poll on load.
       connStartPoll();
 
-      // initialise — seed an empty working set (renders the table/chips), show tokens view
+      // initialise — seed an empty working set (renders the table/chips)
       setTokenSet({}, { silent: true });
-      showView('tokens');
+
+      // Legacy onboarding-flag migration (§U1: collapse sorb_onboarded +
+      // sorb.wizardDone + introSeen into the one sorb.onboarded key), then gate.
+      (function migrateOnboard() {
+        var legacy = ['sorb_onboarded', 'sorb.wizardDone', 'sorb.introSeen'];
+        var seen = lsGet(LS.onb) === 'true';
+        for (var i = 0; i < legacy.length; i++) {
+          var v = lsGet(legacy[i]);
+          if (v && v !== 'no' && v !== '0') seen = true;
+          try { localStorage.removeItem(legacy[i]); } catch (e) {}
+        }
+        if (seen) lsSet(LS.onb, 'true');
+      })();
+
+      if (lsGet(LS.onb) === 'true') showMain(); else showIntro();
     </script>
   </body>
 </html>
