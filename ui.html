@@ -224,12 +224,279 @@
         background: var(--taupe);
         transition: background 0.25s;
       }
-      .conn-pill[data-state="connected"]   { color: var(--ok); background: var(--ok-bg); }
-      .conn-pill[data-state="connected"]   .conn-dot { background: var(--ok); }
-      .conn-pill[data-state="error"]       { color: var(--blaze-ink); background: var(--blaze-bg); }
-      .conn-pill[data-state="error"]       .conn-dot { background: var(--blaze); }
-      .conn-pill[data-state="disconnected"]{ color: var(--soft); background: var(--line-2); }
-      .conn-pill[data-state="disconnected"] .conn-dot { background: var(--taupe); }
+      .conn-pill[data-state="green-live"]  { color: var(--ok); background: var(--ok-bg); }
+      .conn-pill[data-state="green-live"]  .conn-dot { background: var(--ok); box-shadow: 0 0 4px rgba(46,122,78,.55); }
+      .conn-pill[data-state="green-stale"] { color: var(--ok); background: var(--surface-2); }
+      .conn-pill[data-state="green-stale"] .conn-dot { background: var(--ok); opacity: .5; box-shadow: none; }
+      .conn-pill[data-state="amber"]       { color: var(--blaze-ink); background: var(--blaze-bg); }
+      .conn-pill[data-state="amber"]       .conn-dot { background: var(--blaze); box-shadow: 0 0 4px rgba(242,103,34,.5); }
+      .conn-pill[data-state="red"]         { color: var(--err); background: rgba(192,52,29,.10); }
+      .conn-pill[data-state="red"]         .conn-dot { background: var(--err); box-shadow: none; }
+
+      /* ── verify-run receipt button (U3 · F5 / Feature B) ─────────────────── */
+      .receipt-btn {
+        display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px;
+        border: 1px solid var(--ok); border-radius: 5px; background: transparent; color: var(--ok);
+        font-size: 10px; font-weight: 600; font-family: inherit; cursor: pointer; flex: 0 0 auto;
+        transition: background .15s, color .15s;
+      }
+      .receipt-btn:hover { background: var(--ok); color: #fff; }
+      .receipt-btn:disabled, .receipt-btn:disabled:hover { opacity: .5; cursor: default; background: transparent; color: var(--ok); }
+
+      /* ── drift banner (U3 · F2+F7 / Feature C) ───────────────────────────── */
+      .drift-banner {
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+        padding: 7px 12px; width: 100%;
+        background: var(--blaze-bg); border-bottom: 1px solid var(--line);
+        color: var(--blaze-ink); font-size: 10px; font-weight: 500; line-height: 1.45;
+      }
+      .drift-banner-msg { flex: 1; min-width: 0; word-break: break-word; }
+      .drift-banner-dismiss {
+        flex: 0 0 auto; background: none; border: 0; padding: 0 2px; width: auto;
+        font-size: 13px; font-weight: 700; line-height: 1; color: var(--blaze-ink); cursor: pointer; opacity: .7;
+      }
+      .drift-banner-dismiss:hover { opacity: 1; }
+
+      /* ── ambient teammate-activity indicator (U3 · F8 / Feature D) ───────── */
+      .teammate-indicator {
+        font-size: 9px; color: var(--taupe); white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis; max-width: 120px; flex: 0 1 auto;
+      }
+
+      /* ── sync-freshness heartbeat dot (U3 · Feature E) ───────────────────── */
+      .fresh-dot {
+        display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+        margin-left: 6px; vertical-align: middle; background: var(--taupe); transition: background .2s;
+      }
+      .fresh-dot[data-fresh="live"]  { background: var(--ok);    box-shadow: 0 0 4px rgba(46,122,78,.5); }
+      .fresh-dot[data-fresh="stale"] { background: var(--blaze); box-shadow: none; }
+      .fresh-dot[data-fresh="error"] { background: var(--err);   box-shadow: none; }
+      .fresh-dot[data-fresh="off"]   { background: var(--taupe); box-shadow: none; }
+
+      /* ── token-provenance hovercard (U3 · F5) ────────────────────────────── */
+      #tkHovercard {
+        position: fixed; z-index: 9999;
+        width: 232px; padding: 8px 10px;
+        background: var(--ink); color: var(--snow);
+        border-radius: 7px; border: 1px solid var(--ink-2);
+        font-size: 11px; line-height: 1.5;
+        pointer-events: none;
+        opacity: 0; transition: opacity .12s ease-in;
+        box-shadow: 0 4px 14px rgba(33,31,28,.45);
+      }
+      #tkHovercard.visible { opacity: 1; }
+      #tkHovercard .hc-type  { font-size: 10px; color: var(--taupe); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+      #tkHovercard .hc-row   { display: flex; gap: 6px; align-items: baseline; margin-bottom: 2px; }
+      #tkHovercard .hc-label { font-size: 10px; color: var(--taupe); flex-shrink: 0; min-width: 58px; }
+      #tkHovercard .hc-val   { font-family: var(--mono); color: var(--snow); }
+      #tkHovercard .hc-val.changed { color: #E7C9A9; }
+      #tkHovercard .hc-amber { color: var(--blaze); margin-right: 3px; }
+      #tkHovercard .hc-comps { font-size: 10px; color: var(--taupe); margin-top: 5px; border-top: 1px solid var(--ink-2); padding-top: 5px; }
+
+      /* ── tier group headers + dimension swatch (U3 · F15/F14) ─────────── */
+      .tk-tier-head td {
+        position: sticky; top: 28px;
+        background: var(--line-2); font-size: 10px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .06em; color: var(--soft);
+        padding: 3px 8px; pointer-events: none;
+      }
+      .tk-tier-badge {
+        float: right; background: var(--line); border-radius: 8px;
+        padding: 1px 6px; font-size: 9px; font-weight: 600; color: var(--ink-2);
+      }
+      .tk-dim-bar {
+        display: inline-block; height: 5px; background: var(--soft); border-radius: 2px;
+        min-width: 4px; vertical-align: middle;
+      }
+
+      /* ── "Used by N" blast-radius badge (U3 · P2) ────────────────────── */
+      .tk-name-cell { display: flex; align-items: center; gap: 6px; }
+      .tk-name-cell .tk-name { flex: 1 1 auto; }
+      .tk-uses {
+        flex: 0 0 auto; font-size: 9.5px; padding: 1px 6px; border-radius: 9px;
+        border: 1px solid var(--line); background: var(--surface); color: var(--soft);
+        cursor: pointer; user-select: none; white-space: nowrap; font-family: var(--mono);
+      }
+      .tk-uses:hover { background: var(--blaze-bg); border-color: var(--blaze); color: var(--blaze-ink); }
+      .tk-uses.open  { background: var(--blaze-bg); border-color: var(--blaze); color: var(--blaze-ink); }
+      .tk-uses.muted { color: var(--taupe); cursor: default; }
+      .tk-uses.muted:hover { background: var(--surface); border-color: var(--line); color: var(--taupe); }
+      .tk-uses-detail {
+        padding: 4px 8px 6px 38px; font-size: 10px; color: var(--ink-2);
+        background: var(--surface-2); line-height: 1.5;
+      }
+      .tk-uses-detail .tk-uses-row  { font-family: var(--mono); }
+      .tk-uses-detail .tk-uses-role { color: var(--blaze-ink); font-weight: 600; }
+      .tk-uses-detail.empty { color: var(--taupe); }
+
+      /* ── graft picker (U3 · P4) ──────────────────────────────────────── */
+      .graft { margin-top: 10px; border: 1px solid var(--line); border-radius: 6px; }
+      .graft-toggle {
+        width: 100%; text-align: left; padding: 7px 10px; border: 0; border-radius: 6px;
+        background: var(--surface-2); color: var(--ink-2); font-size: 11px; font-weight: 600; cursor: pointer;
+      }
+      .graft-toggle:hover { background: var(--line-2); }
+      .graft-body { padding: 8px 10px 10px; }
+      .graft-body[hidden] { display: none; }
+      .graft-row { display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap; }
+      .graft-lbl { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--soft); flex: 1 1 120px; margin: 0; }
+      .graft-lbl select { font-size: 11px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+      .graft-arrow { color: var(--taupe); padding-bottom: 6px; }
+      .graft-result { margin-top: 10px; font-size: 10px; }
+      .graft-result[hidden] { display: none; }
+      .graft-cs-row {
+        display: flex; align-items: center; gap: 6px; padding: 3px 0;
+        border-bottom: 1px solid var(--line-2); font-family: var(--mono);
+      }
+      .graft-cs-role { color: var(--blaze-ink); font-weight: 600; min-width: 56px; }
+      .graft-cs-arrow { color: var(--taupe); }
+      .graft-conflict { color: var(--err); }
+      .graft-deprecated { color: #B8860B; }
+      .graft-section-title { font-weight: 600; color: var(--soft); margin: 8px 0 3px; font-family: var(--sans); }
+      .graft-section-title.conflicts { color: var(--err); }
+      .graft-apply { margin-top: 8px; }
+      .graft-empty { color: var(--taupe); padding: 6px 0; }
+
+      /* ── U3 · PR diff drawer (bottom sheet) ──────────────────────────── */
+      .diff-scrim {
+        position: absolute; inset: 0; z-index: 9998;
+        background: rgba(33,31,28,.42);
+        opacity: 0; transition: opacity .18s;
+      }
+      .diff-scrim.visible { opacity: 1; }
+      #diffDrawer {
+        position: absolute; bottom: 0; left: 0; right: 0; z-index: 9999;
+        background: var(--surface); border-top: 1px solid var(--line);
+        border-radius: 12px 12px 0 0;
+        max-height: 440px; min-height: 190px;
+        display: flex; flex-direction: column;
+        transform: translateY(100%); transition: transform .2s ease-out;
+        box-shadow: 0 -6px 22px rgba(33,31,28,.16);
+      }
+      #diffDrawer.visible { transform: translateY(0); }
+      .diff-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 11px 13px 9px; border-bottom: 1px solid var(--line-2);
+        font-size: 13px; font-weight: 650; color: var(--ink); flex-shrink: 0;
+      }
+      .diff-header .n { font-weight: 400; color: var(--soft); font-size: 11px; }
+      .diff-close {
+        flex: 0 0 auto; background: none; border: none; cursor: pointer;
+        padding: 2px 6px; font-size: 15px; color: var(--taupe); line-height: 1;
+      }
+      .diff-close:hover { color: var(--ink); }
+      .diff-rows { overflow-y: auto; max-height: 210px; padding: 4px 0; flex-shrink: 1; }
+      .diff-group-header {
+        font-size: 10px; font-weight: 700; color: var(--taupe); text-transform: uppercase;
+        padding: 7px 13px 2px; letter-spacing: .06em;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .diff-group-header::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
+      .diff-row { padding: 4px 13px; }
+      .diff-row-name {
+        font-family: var(--mono); font-size: 10px; color: var(--ink-2);
+        margin-bottom: 3px; display: flex; align-items: center; gap: 6px;
+      }
+      .diff-blast-badge {
+        font-size: 9px; background: var(--line-2); color: var(--soft);
+        padding: 1px 5px; border-radius: 8px; font-family: var(--mono);
+      }
+      .diff-cols { display: flex; align-items: center; gap: 4px; }
+      .diff-col-old {
+        flex: 1; background: var(--surface-2); border: 1px solid var(--line);
+        border-radius: 5px; padding: 3px 6px; font-family: var(--mono); font-size: 10px;
+        color: var(--soft); display: flex; align-items: center; gap: 4px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .diff-col-new {
+        flex: 1; background: var(--blaze-bg); border: 1px solid #F3C9B0;
+        border-radius: 5px; padding: 3px 6px; font-family: var(--mono); font-size: 10px;
+        color: var(--blaze-ink); font-weight: 650; display: flex; align-items: center; gap: 4px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .diff-col-new em, .diff-col-old em { color: var(--taupe); font-style: italic; font-weight: 400; }
+      .diff-arrow { font-size: 11px; color: var(--taupe); flex-shrink: 0; }
+      .diff-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(33,31,28,.12); }
+      .diff-commit-area { padding: 8px 13px; border-top: 1px solid var(--line-2); flex-shrink: 0; }
+      .diff-commit-label { font-size: 10px; color: var(--soft); margin-bottom: 4px; }
+      #diffCommitMsg {
+        width: 100%; height: 54px; font-family: var(--mono); font-size: 10px;
+        border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; resize: none; color: var(--ink);
+      }
+      .diff-actions { display: flex; gap: 8px; padding: 9px 13px; border-top: 1px solid var(--line-2); flex-shrink: 0; }
+      .diff-actions button { flex: 1; padding: 8px 10px; font-size: 12px; }
+
+      /* ── U3 · Connect onboarding overlay ─────────────────────────────── */
+      #obOverlay {
+        position: absolute; inset: 0; z-index: 10000;
+        background: rgba(33,31,28,.55);
+        display: flex; align-items: center; justify-content: center; padding: 16px;
+      }
+      #obCard {
+        width: 340px; max-height: 468px; background: var(--surface);
+        border-radius: 12px; padding: 18px 16px 14px;
+        display: flex; flex-direction: column; overflow: hidden;
+        box-shadow: 0 10px 34px rgba(33,31,28,.30);
+      }
+      .ob-dots { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 16px; flex-shrink: 0; }
+      .ob-dot {
+        width: 24px; height: 24px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; flex-shrink: 0; position: relative; z-index: 1;
+        border: 2px solid var(--line); color: var(--taupe); background: var(--surface);
+      }
+      .ob-dot.active { background: var(--blaze); border-color: var(--blaze); color: #fff; }
+      .ob-dot.done   { background: var(--ok);    border-color: var(--ok);    color: #fff; }
+      .ob-dot-line   { flex: 1; height: 2px; background: var(--line); max-width: 34px; }
+      .ob-step { flex: 1; overflow-y: auto; }
+      .ob-step h3 { font-size: 15px; font-weight: 650; margin: 0 0 6px; color: var(--ink); }
+      .ob-step p  { font-size: 12px; color: var(--ink-2); margin: 0 0 10px; line-height: 1.5; }
+      .ob-input {
+        width: 100%; border: 1px solid var(--line); border-radius: 7px;
+        padding: 7px 9px; font-size: 12px; font-family: inherit; margin-bottom: 6px;
+      }
+      .ob-status { min-height: 18px; margin-bottom: 8px; font-size: 11px; }
+      .ob-status.ok  { color: var(--ok); }
+      .ob-status.err { color: var(--err); }
+      .ob-status.muted { color: var(--soft); }
+      .ob-cta { flex-shrink: 0; margin-top: 10px; }
+      .ob-cta button { width: 100%; padding: 9px 12px; font-size: 12px; }
+      .ob-cta button[disabled] { opacity: .45; cursor: default; }
+      .ob-continue {
+        display: inline-block; margin-top: 8px; font-size: 11px; color: var(--blaze-ink);
+        text-decoration: underline; cursor: pointer; background: none; border: none; padding: 0;
+      }
+      #obLater {
+        display: block; text-align: left; font-size: 11px; color: var(--soft);
+        text-decoration: underline; cursor: pointer; background: none; border: none;
+        padding: 8px 0 0; width: 100%;
+      }
+      #obLater:hover { color: var(--ink-2); }
+
+      /* ── U3 · F13 warm empty-state kit ───────────────────────────────── */
+      .empty-state { text-align: center; padding: 40px 16px; }
+      .empty-state .es-icon { font-size: 28px; margin-bottom: 10px; color: var(--taupe); }
+      .empty-state .es-head { font-size: 13px; font-weight: 650; color: var(--ink-2); margin-bottom: 6px; }
+      .empty-state .es-body { font-size: 11px; line-height: 1.5; color: var(--soft); margin-bottom: 14px; }
+      .empty-state .es-body code { font-family: var(--mono); font-size: 10.5px; }
+      .empty-state .es-cta {
+        flex: 0 0 auto; width: auto; min-width: 0;
+        background: var(--blaze); color: #fff; border-radius: 7px;
+        padding: 7px 16px; font-size: 11.5px; font-weight: 650;
+      }
+      .empty-state .es-cta:hover { background: var(--blaze-ink); }
+
+      /* ── U3 · Settings inline Test ───────────────────────────────────── */
+      .set-field-row { display: flex; gap: 6px; align-items: stretch; }
+      .set-field-row input { flex: 1; }
+      .set-test-btn {
+        flex: 0 0 auto; width: auto; min-width: 0; padding: 0 12px; font-size: 11px;
+        border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); border-radius: 6px;
+      }
+      .set-test-btn:hover { border-color: var(--taupe); }
+      .set-result { display: block; font-size: 10.5px; min-height: 14px; margin-top: 4px; color: var(--soft); }
+      .set-result.ok  { color: var(--ok); }
+      .set-result.err { color: var(--err); }
     </style>
   </head>
   <body>
@@ -238,6 +505,7 @@
     <div class="hdr">
       <div class="mark"><div class="glyph"></div><div class="wm">Sorb</div></div>
       <div class="sp"></div>
+      <div id="teammateIndicator" class="teammate-indicator" style="display:none"></div>
       <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">—</span>
@@ -285,7 +553,7 @@
         <label>Tokens <span class="hint">(from Figma Variables — editable)</span></label>
         <div class="tk-head-right">
           <span class="hint" style="font-weight:400;cursor:pointer;">
-            <input type="checkbox" id="autoSync" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync
+            <input type="checkbox" id="autoSync" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
           </span>
           <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
@@ -310,6 +578,26 @@
           </thead>
           <tbody id="tkBody"></tbody>
         </table>
+      </div>
+
+      <!-- ── graft picker (U3 · P4) — copy a source component's theme onto a target ── -->
+      <div class="graft" id="graftPanel">
+        <button class="graft-toggle" id="graftToggle" type="button">
+          <span id="graftToggleLabel">Graft a theme ▸</span>
+        </button>
+        <div class="graft-body" id="graftBody" hidden>
+          <div class="graft-row">
+            <label class="graft-lbl">Source
+              <select id="graftFrom"><option value="">— pick component —</option></select>
+            </label>
+            <span class="graft-arrow">→</span>
+            <label class="graft-lbl">Target
+              <select id="graftTo"><option value="">— pick component —</option></select>
+            </label>
+            <button class="secondary" id="graftPlanBtn" type="button">Plan graft</button>
+          </div>
+          <div class="graft-result" id="graftResult" hidden></div>
+        </div>
       </div>
 
       <div class="tk-rawwrap" id="tkRawWrap" hidden>
@@ -384,10 +672,18 @@
       <p class="settings-note">Saved locally between sessions.</p>
 
       <label>Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
-      <input id="origin" placeholder="http://localhost:7777" />
+      <div class="set-field-row">
+        <input id="origin" placeholder="http://localhost:7777" />
+        <button type="button" class="set-test-btn" id="originTest">Test</button>
+      </div>
+      <span class="set-result" id="originResult"></span>
 
       <label>App URL <span class="hint">(page to open with the preview)</span></label>
-      <input id="appUrl" placeholder="http://localhost:5173" />
+      <div class="set-field-row">
+        <input id="appUrl" placeholder="http://localhost:5173" />
+        <button type="button" class="set-test-btn" id="appTest">Test</button>
+      </div>
+      <span class="set-result" id="appResult"></span>
 
       <label>Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
       <input id="storybookUrl" placeholder="http://localhost:6006" />
@@ -408,6 +704,9 @@
     <!-- off-screen clipboard buffer -->
     <textarea id="copybuf" aria-hidden="true" tabindex="-1"
       style="position:absolute;left:-9999px;top:-9999px;height:1px;"></textarea>
+
+    <!-- token-provenance hovercard (U3 · F5) — positioned on hover -->
+    <div id="tkHovercard" role="tooltip" aria-hidden="true"></div>
 
     <script>
       var $ = function(id) { return document.getElementById(id); };
@@ -450,6 +749,13 @@
       // ── persisted settings ─────────────────────────────────────────────
       var LS = { origin: 'sorb.origin', app: 'sorb.appUrl', gh: 'sorb.githubUrl', sb: 'sorb.storybookUrl', auto: 'sorb.autoSync', label: 'sorb.labelInserts',
                  onb: 'sorb.onboarded', onbPath: 'sorb.onboardPath', demo: 'sorb.demoMode', apiKey: 'sorb.apiKey' };
+      // U3 · Feature A — last-verify trust + drift snapshot keys.
+      LS.lastVerifiedAt     = 'sorb.lastVerifiedAt';
+      LS.lastTokenHash      = 'sorb.lastTokenHash';
+      LS.lastTokenCount     = 'sorb.lastTokenCount';
+      LS.lastComponentCount = 'sorb.lastComponentCount';
+      LS.lastTokenIds       = 'sorb.lastTokenIds';
+      LS.lastTokenSnapshot  = 'sorb.lastTokenSnapshot';
       function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
       function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
 
@@ -480,6 +786,21 @@
       $('storybookUrl').addEventListener('change', function(e) { lsSet(LS.sb,     e.target.value); });
       $('apiKey').addEventListener('change',       function(e) { lsSet(LS.apiKey, e.target.value.trim()); });
 
+      // U3 — flat-Settings inline Test (reuses testConnection; §3 honesty labels).
+      function wireSettingsTest(inputId, btnId, resultId, kind) {
+        var btn = $(btnId); if (!btn) return;
+        btn.onclick = function() {
+          var res = $(resultId);
+          res.className = 'set-result'; res.textContent = 'Testing…';
+          testConnection($(inputId).value.trim(), kind, function(r) {
+            res.className = 'set-result ' + (r.ok ? 'ok' : 'err');
+            res.textContent = (r.ok ? '✓ ' : '✗ ') + r.label;
+          });
+        };
+      }
+      wireSettingsTest('origin', 'originTest', 'originResult', 'health');
+      wireSettingsTest('appUrl', 'appTest',   'appResult',    'ping');
+
       // Label toggle (default ON — only false when explicitly saved as 'no').
       $('labelToggle').checked = lsGet(LS.label) !== 'no';
       $('labelToggle').addEventListener('change', function(e) { lsSet(LS.label, e.target.checked ? 'yes' : 'no'); });
@@ -501,6 +822,33 @@
         var key = activeKey();
         if (key) opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + key });
         return fetch(url, opts);
+      }
+
+      // ── U3 shared connection tester (onboarding steps 1/2 + Settings) ────
+      // kind:'health' → real GET /health (auth-free, like connCheck); blocks Next.
+      // kind:'ping'   → no-cors reachability probe; can only prove "didn't throw".
+      // Never label a ping "Connected" — CORS makes the status unreadable (§3 honesty note).
+      function testConnection(url, kind, cb) {
+        if (!url) return cb({ ok: false, label: 'Enter a URL first' });
+        var base = String(url).trim().replace(/\/$/, '');
+        var target = base + (kind === 'health' ? '/health' : '');
+        var ctrl = new AbortController();
+        var tid = setTimeout(function() { ctrl.abort(); }, 3000);
+        var opts = kind === 'ping'
+          ? { mode: 'no-cors', signal: ctrl.signal }
+          : { signal: ctrl.signal };
+        fetch(target, opts)
+          .then(function(r) {
+            clearTimeout(tid);
+            if (kind === 'health') cb({ ok: r.ok, label: r.ok ? 'Bridge connected' : 'Bridge responded, not ready' });
+            else                   cb({ ok: true,  label: 'Reachable' });
+          })
+          .catch(function(e) {
+            clearTimeout(tid);
+            cb({ ok: false, label: kind === 'health'
+              ? "Can't reach the bridge — start `sorb dev`"
+              : 'Not reachable' });
+          });
       }
 
       // Best-effort self-report of an inserted component's geometry (+ bound-field
@@ -525,6 +873,16 @@
       var rawOpen = false;          // </> raw editor visible?
       var livePreviewId = null;     // active live-preview session id (string|null)
       var pushTimer = null;         // debounce handle for live PUT
+      // ── token-intelligence state (U3) ───────────────────────────────────
+      var committedTokens = null;   // deep-copy snapshot from last GET /tokens/latest (hovercard baseline)
+      var resolvedGraph   = null;   // raw array from GET /tokens/resolved (per-token .components; diff blast-radius)
+      var resolvedMap     = {};     // id → { tier, type } derived from resolvedGraph (tier sort + type swatch)
+      var hcVisible       = false;  // provenance hovercard currently shown?
+      var graftOpen       = false;  // graft picker expanded?
+      var lastGraftPlan   = null;   // last /graft/plan response, cached for Apply
+      var figmaUserName   = null;   // set once from the code.js figmaUser message (U3 · F8)
+      var obStep          = 1;      // current onboarding step (1..4)
+      var obAppOk         = false;  // step-2 ping passed OR "Continue anyway" pressed
       var mirroring = false;        // guards the textarea input listener from set→raw loops
       var dirty = false;            // raw editor has unsaved edits
       var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
@@ -552,6 +910,17 @@
           setSbStatus('✓ Inserted ' + n + ' component' + (n === 1 ? '' : 's') + ' into the canvas.');
         } else if (msg.type === 'sorb-verify') {
           verifyInsert(msg.storyId, msg.bbox, msg.meta);
+        } else if (msg.type === 'figmaUser') {
+          figmaUserName = msg.name || null;
+        } else if (msg.type === 'auto-freshness') {
+          if (!$('autoSync').checked) { setFreshness('off'); return; }
+          if (msg.ok) {
+            if (msg.changed) freshLastChange = new Date(msg.at).toISOString();
+            setFreshness('live');
+          } else {
+            setFreshness('error', { error: msg.error });
+          }
+          armFreshWatchdog();
         } else if (msg.type === 'error') {
           hideProgress();
           setStatus('Plugin error: ' + msg.message, true);
@@ -572,6 +941,7 @@
         lsSet(LS.auto, on ? '1' : '0');
         post('set-auto', { enabled: on });
         if (!on) endSession();   // tearing down auto-sync ends any live-preview session
+        if (!on) { setFreshness('off'); if (freshWatchdog) clearTimeout(freshWatchdog); }  // U3 · Feature E
         setStatus(on ? 'Auto-sync on — watching Figma Variables.' : 'Auto-sync off.');
       });
 
@@ -646,9 +1016,9 @@
       }
       $('helpBtn').onclick = showIntro;
       $('pathConnect').onclick = function() {
-        lsSet(LS.onb, 'true'); lsSet(LS.onbPath, 'connect'); lsSet(LS.demo, '');   // leaving demo mode
-        showMain();
-        setStatus('Set your Bridge origin (and API key, if hosted) in Settings, then Load from App.');
+        lsSet(LS.demo, '');            // leaving demo mode; onboarded is set on finish/skip, not here
+        showMain();                    // reveal the app behind the scrim (intro → step 1 continuity)
+        openConnectOverlay(1);
       };
       // "Try the live demo" — hosted demo path (U4). Lights up only when a read-only demo
       // key (DEMO_PK, from Keychain `sorb-publish-only`) AND the deployed demo-app origin
@@ -697,9 +1067,50 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var json = await res.json();
           setTokenSet(json, { silent: true });
+          committedTokens = JSON.parse(JSON.stringify(json));   // baseline snapshot (hovercard diff)
           setStatus('Loaded committed tokens from the bridge.');
+          loadResolved(origin);                                 // background: fills resolvedGraph + resolvedMap
         } catch(e) { setStatus('Failed to load committed tokens: ' + e.message, true); }
       };
+
+      // Background fetch of the resolved token graph; populates BOTH resolvedGraph
+      // (array, per-token .components — used by the hovercard + diff-drawer blast
+      // badge) and resolvedMap (id → {tier,type} — tier headers + type swatches).
+      // Non-blocking, quiet on failure, then re-renders so metadata appears once it
+      // arrives. Single source of truth: no other /tokens/resolved fetch is added.
+      function loadResolved(origin) {
+        bfetch(origin + '/tokens/resolved')
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(data) {
+            if (!data) return;
+            var arr = Array.isArray(data) ? data : (Array.isArray(data.tokens) ? data.tokens : []);
+            resolvedGraph = arr;
+            resolvedMap = {};
+            arr.forEach(function(t) { if (t.id) resolvedMap[t.id] = { tier: t.tier, type: t.type }; });
+            renderTokenTable();
+          })
+          .catch(function(e) { /* non-critical; features degrade to no-metadata */ });
+      }
+
+      // ── verify-run receipt snippet (U3 · F5 / Feature B) ─────────────────
+      function buildReceiptSnippet(tokenCount, componentCount) {
+        var ts = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        return '> ✅ Sorb verified — ' + tokenCount + ' tokens · ' + componentCount + ' components · ' + ts + ' UTC';
+      }
+      async function copyReceipt(snippet) {
+        var copied = false;
+        try { await navigator.clipboard.writeText(snippet); copied = true; } catch (e) {}
+        if (!copied) { try { var b = $('copybuf'); b.value = snippet; b.focus(); b.select(); copied = document.execCommand('copy'); } catch (e) {} }
+        return copied;
+      }
+      function appendReceiptBtn(snippet) {
+        var btn = document.createElement('button');
+        btn.className = 'receipt-btn'; btn.textContent = 'Copy receipt';
+        btn.onclick = function() {
+          copyReceipt(snippet).then(function(ok) { btn.textContent = ok ? 'Copied!' : 'Copy failed'; btn.disabled = true; });
+        };
+        $('status').appendChild(btn);
+      }
 
       // ── Preview in app — ESTABLISHES the live session (§7 option 1) ─────
       $('preview').onclick = async function() {
@@ -714,6 +1125,13 @@
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var d = await res.json();
+          // U3 · Feature A — record this verify + seed the drift snapshot/hash.
+          lsSet(LS.lastVerifiedAt, new Date().toISOString());
+          lsSet(LS.lastTokenCount, String(Object.keys(tokenSet).length));
+          lsSet(LS.lastComponentCount, String(sbRows ? sbRows.length : 0));
+          lsSet(LS.lastTokenIds, JSON.stringify(Object.keys(tokenSet).sort()));
+          hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
+          postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           livePreviewId = d.id;
           updateCta();                              // session live → CTA becomes Open PR
           var url = appUrl + (appUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
@@ -721,6 +1139,7 @@
           post('notify', { message: 'Preview ready: ' + d.id });
           setStatus('Preview <b>' + d.id + '</b> created. <a href="' + url + '" target="_blank">Open app ↗</a>' +
             ($('autoSync').checked ? ' — live editing on.' : '.'));
+          appendReceiptBtn(buildReceiptSnippet(Object.keys(tokenSet).length, sbRows ? sbRows.length : 0));
         } catch(e) { setStatus('Preview failed: ' + e.message, true); }
       };
 
@@ -738,16 +1157,139 @@
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var d = await res.json();
+          // U3 · Feature A — record this verify + seed the drift snapshot/hash.
+          lsSet(LS.lastVerifiedAt, new Date().toISOString());
+          lsSet(LS.lastTokenCount, String(Object.keys(tokenSet).length));
+          lsSet(LS.lastComponentCount, String(sbRows ? sbRows.length : 0));
+          lsSet(LS.lastTokenIds, JSON.stringify(Object.keys(tokenSet).sort()));
+          hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
+          postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           var url = sbUrl + (sbUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Storybook preview: ' + d.id });
           setStatus('Storybook preview <b>' + d.id + '</b> opened. <a href="' + url + '" target="_blank">Open ↗</a>');
+          appendReceiptBtn(buildReceiptSnippet(Object.keys(tokenSet).length, sbRows ? sbRows.length : 0));
         } catch(e) { setStatus('Preview failed: ' + e.message, true); }
       };
 
-      // ── Open PR (→ working set) ─────────────────────────────────────────
+      // ── U3 · PR diff drawer (intercepts the #openpr CTA terminal state) ──
+      function buildCommitMessage(changed, committed, groupKeys) {
+        var n = changed.length;
+        var gList = groupKeys.slice(0, 3).join(', ') + (groupKeys.length > 3 ? ' +' + (groupKeys.length - 3) + ' more' : '');
+        var subject = 'chore(tokens): update ' + n + ' token' + (n === 1 ? '' : 's') + ' — ' + gList;
+        var lines = ['Tokens changed:'];
+        changed.forEach(function(name) {
+          var oldVal = committed[name], newVal = tokenSet[name];
+          lines.push('- ' + name + ': ' + (oldVal !== undefined ? oldVal : '(new)') + ' → ' + (newVal !== undefined ? newVal : '(removed)'));
+        });
+        return subject + '\n\n' + lines.join('\n');
+      }
+
+      function teardownDiffDrawer() {
+        var scrim = $('diffScrim'), drawer = $('diffDrawer');
+        if (scrim && scrim.parentNode) scrim.parentNode.removeChild(scrim);
+        if (drawer && drawer.parentNode) drawer.parentNode.removeChild(drawer);
+      }
+
+      function blastBadge(name) {
+        if (!resolvedGraph) return '';
+        for (var i = 0; i < resolvedGraph.length; i++) {
+          var e = resolvedGraph[i];
+          if ((e.name === name || e.id === name) && Array.isArray(e.components)) {
+            var c = e.components.length;
+            return ' <span class="diff-blast-badge">' + c + ' comp' + (c !== 1 ? 's' : '') + '</span>';
+          }
+        }
+        return '';
+      }
+
+      function buildDiffDrawer(committed, changed, groups, groupKeys, editUrl) {
+        teardownDiffDrawer();
+
+        var scrim = document.createElement('div');
+        scrim.className = 'diff-scrim'; scrim.id = 'diffScrim';
+        scrim.onclick = teardownDiffDrawer;
+        document.body.appendChild(scrim);
+
+        var drawer = document.createElement('div');
+        drawer.id = 'diffDrawer';
+
+        var hdr = document.createElement('div');
+        hdr.className = 'diff-header';
+        hdr.innerHTML = '<span>Review changes <span class="n">(' + changed.length + ' changed)</span></span>';
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'diff-close'; closeBtn.textContent = '✕';
+        closeBtn.onclick = teardownDiffDrawer;
+        hdr.appendChild(closeBtn);
+        drawer.appendChild(hdr);
+
+        var rowsWrap = document.createElement('div');
+        rowsWrap.className = 'diff-rows';
+        groupKeys.forEach(function(gk) {
+          var ghdr = document.createElement('div');
+          ghdr.className = 'diff-group-header'; ghdr.textContent = gk;
+          rowsWrap.appendChild(ghdr);
+          groups[gk].forEach(function(name) {
+            var oldVal = committed[name], newVal = tokenSet[name];
+            var isColor = inferType(newVal !== undefined ? newVal : (oldVal !== undefined ? oldVal : '')) === 'COLOR';
+
+            var row = document.createElement('div'); row.className = 'diff-row';
+            var nameRow = document.createElement('div'); nameRow.className = 'diff-row-name';
+            nameRow.innerHTML = tkEscape(name) + blastBadge(name);
+            row.appendChild(nameRow);
+
+            var cols = document.createElement('div'); cols.className = 'diff-cols';
+            var colOld = document.createElement('div'); colOld.className = 'diff-col-old';
+            if (isColor && oldVal) { var so = document.createElement('span'); so.className = 'diff-swatch'; so.style.background = oldVal; colOld.appendChild(so); }
+            if (oldVal === undefined) { var e1 = document.createElement('em'); e1.textContent = '(new)'; colOld.appendChild(e1); }
+            else colOld.appendChild(document.createTextNode(oldVal));
+
+            var arrow = document.createElement('div'); arrow.className = 'diff-arrow'; arrow.textContent = '→';
+
+            var colNew = document.createElement('div'); colNew.className = 'diff-col-new';
+            if (isColor && newVal) { var sn = document.createElement('span'); sn.className = 'diff-swatch'; sn.style.background = newVal; colNew.appendChild(sn); }
+            if (newVal === undefined) { var e2 = document.createElement('em'); e2.textContent = '(removed)'; colNew.appendChild(e2); }
+            else colNew.appendChild(document.createTextNode(newVal));
+
+            cols.appendChild(colOld); cols.appendChild(arrow); cols.appendChild(colNew);
+            row.appendChild(cols); rowsWrap.appendChild(row);
+          });
+        });
+        drawer.appendChild(rowsWrap);
+
+        var commitArea = document.createElement('div'); commitArea.className = 'diff-commit-area';
+        var cl = document.createElement('div'); cl.className = 'diff-commit-label'; cl.textContent = 'Commit message';
+        commitArea.appendChild(cl);
+        var msgTa = document.createElement('textarea'); msgTa.id = 'diffCommitMsg';
+        msgTa.value = buildCommitMessage(changed, committed, groupKeys);
+        commitArea.appendChild(msgTa);
+        drawer.appendChild(commitArea);
+
+        var actions = document.createElement('div'); actions.className = 'diff-actions';
+        var copyOpen = document.createElement('button'); copyOpen.className = 'primary';
+        copyOpen.textContent = 'Copy diff + open GitHub';
+        copyOpen.onclick = async function() {
+          var merged = Object.assign({}, committed, tokenSet);
+          var json = JSON.stringify(merged, null, 2) + '\n';
+          var copied = false;
+          try { await navigator.clipboard.writeText(json); copied = true; } catch(e) {}
+          if (!copied) { try { var buf = $('copybuf'); buf.value = json; buf.focus(); buf.select(); copied = document.execCommand('copy'); } catch(e) {} }
+          window.open(editUrl, '_blank');
+          copyOpen.textContent = 'Copied!'; copyOpen.disabled = true;
+          setTimeout(function() { copyOpen.textContent = 'Copy diff + open GitHub'; copyOpen.disabled = false; }, 1500);
+        };
+        var backBtn = document.createElement('button'); backBtn.className = 'secondary';
+        backBtn.textContent = 'Back'; backBtn.onclick = teardownDiffDrawer;
+        actions.appendChild(copyOpen); actions.appendChild(backBtn);
+        drawer.appendChild(actions);
+        document.body.appendChild(drawer);
+
+        requestAnimationFrame(function() { scrim.classList.add('visible'); drawer.classList.add('visible'); });
+      }
+
+      // ── Open PR (→ working set) — intercepts with the diff drawer ────────
       $('openpr').onclick = async function() {
-        var edits = tokenSet;                       // working set, not parsed textarea
+        var edits = tokenSet;
         var origin  = trimOrigin();
         var editUrl = $('githubUrl').value.trim();
         if (!origin)  return setStatus('Set Bridge origin in Settings.', true);
@@ -759,24 +1301,56 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           committed = await res.json();
         } catch(e) { return setStatus('Could not load committed tokens: ' + e.message, true); }
-        var merged = Object.assign({}, committed, edits);
-        var json = JSON.stringify(merged, null, 2) + '\n';
+
+        // changed = edited/added, plus removed (in committed, gone from working set)
         var changed = Object.keys(edits).filter(function(k) { return committed[k] !== edits[k]; });
-        var copied = false;
-        try { await navigator.clipboard.writeText(json); copied = true; } catch(e) {}
-        if (!copied) {
-          try { var buf=$('copybuf'); buf.value=json; buf.focus(); buf.select(); copied=document.execCommand('copy'); } catch(e) {}
+        Object.keys(committed).forEach(function(k) { if (edits[k] === undefined && changed.indexOf(k) === -1) changed.push(k); });
+        changed.sort();
+
+        if (!changed.length) {
+          // No diff → original clipboard + open flow (unchanged behavior).
+          var merged = Object.assign({}, committed, edits);
+          var json = JSON.stringify(merged, null, 2) + '\n';
+          var copied = false;
+          try { await navigator.clipboard.writeText(json); copied = true; } catch(e) {}
+          if (!copied) { try { var buf = $('copybuf'); buf.value = json; buf.focus(); buf.select(); copied = document.execCommand('copy'); } catch(e) {} }
+          if (!copied) { if (!rawOpen) toggleRaw(); $('tokens').value = json; }
+          window.open(editUrl, '_blank');
+          setStatus((copied ? '✓ Copied <code>tokens.json</code> to clipboard. ' : 'Could not auto-copy — merged file is in the raw editor. ') +
+            'In GitHub: <b>⌘A → paste → Commit changes… → Propose changes</b>. (No changes detected.)');
+          return;
         }
-        if (!copied) { if (!rawOpen) toggleRaw(); $('tokens').value = json; }
-        window.open(editUrl, '_blank');
-        setStatus((copied ? '✓ Copied <code>tokens.json</code> to clipboard. ' : 'Could not auto-copy — merged file is in the raw editor. ') +
-          'In GitHub: <b>⌘A → paste → Commit changes… → Propose changes</b>.' +
-          (changed.length ? '<br/>Changed: <b>' + changed.join(', ') + '</b>' : ''));
+
+        var groups = {};
+        changed.forEach(function(name) { var g = groupOf(name); (groups[g] || (groups[g] = [])).push(name); });
+        var groupKeys = Object.keys(groups).sort();
+        setStatus('');
+        buildDiffDrawer(committed, changed, groups, groupKeys, editUrl);
       };
 
       // ════════════════════════════════════════════════════════════════════
       // TOKENS TABLE — type/group inference + rendering (spec §2, §4, §8)
       // ════════════════════════════════════════════════════════════════════
+
+      // §F14 — parse a dimension token to px (rem/em → ×16) for the swatch bar.
+      function parsePx(val) {
+        var m = String(val).match(/^([\d.]+)(px|rem|em)?$/);
+        if (!m) return null;
+        var n = parseFloat(m[1]);
+        if (m[2] === 'rem' || m[2] === 'em') n = n * 16;
+        return isFinite(n) ? n : null;
+      }
+
+      // §F15 — tier sort. (Local UI ranking; mirrors @sorb/core TIER_RANK order.)
+      var TK_TIER_RANK = { component: 0, semantic: 1, primitive: 2 };
+      function tierOf(name) {
+        var m = resolvedMap[name];
+        return (m && m.tier) ? m.tier.toLowerCase() : '—';
+      }
+      function tierRank(name) {
+        var t = tierOf(name);
+        return t in TK_TIER_RANK ? TK_TIER_RANK[t] : 99;
+      }
 
       // §2.1 — infer a token's type from its value string.
       function inferType(v) {
@@ -833,8 +1407,21 @@
           .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
 
-      // Leading-cell HTML: swatch for colors, type glyph otherwise.
+      // Leading-cell HTML: resolvedMap type-aware swatch (U3 · F14), falling
+      // back to the color swatch / type glyph when no resolved metadata.
       function iconCellHtml(name, value) {
+        var meta = resolvedMap[name] || {};
+        if (meta.type === 'color') {
+          return '<span class="tk-swatch" style="background:' + tkEscape(value) + '"></span>';
+        }
+        if (meta.type === 'dimension') {
+          var px = parsePx(value);
+          var w = px ? Math.min(px, 32) : 8;
+          return '<span class="tk-dim-bar" style="width:' + w + 'px"></span>';
+        }
+        if (meta.type === 'fontFamily') {
+          return '<span style="font-family:' + tkEscape(value) + ';font-size:12px;line-height:1">Aa</span>';
+        }
         var type = inferType(value);
         if (type === 'COLOR') {
           return '<span class="tk-swatch" style="background:' + tkEscape(value) + '"></span>';
@@ -845,6 +1432,21 @@
           + '</span>';
       }
 
+      // F13 — warm empty-state builder. `body` is HTML; `ctaLabel`/`ctaFn` optional.
+      function buildEmptyState(icon, head, body, ctaLabel, ctaFn) {
+        var d = document.createElement('div');
+        d.className = 'empty-state';
+        d.innerHTML = '<div class="es-icon">' + icon + '</div>'
+          + '<div class="es-head">' + tkEscape(head) + '</div>'
+          + '<div class="es-body">' + body + '</div>';
+        if (ctaLabel) {
+          var btn = document.createElement('button');
+          btn.className = 'es-cta'; btn.textContent = ctaLabel; btn.onclick = ctaFn;
+          d.appendChild(btn);
+        }
+        return d;
+      }
+
       // §4 — render the token table from the working set into #tkBody.
       function renderTokenTable() {
         var body = $('tkBody');
@@ -853,19 +1455,60 @@
         var hasFilter = Object.keys(tokenFilters).length > 0;
         var names = Object.keys(tokenSet);
         if (hasFilter) names = names.filter(function(n) { return !!tokenFilters[groupOf(n)]; });
-        names.sort();
+        names.sort(function(a, b) {
+          var ra = tierRank(a), rb = tierRank(b);
+          if (ra !== rb) return ra - rb;
+          return a < b ? -1 : a > b ? 1 : 0;
+        });
 
         if (!names.length) {
           var trE = document.createElement('tr');
           var tdE = document.createElement('td');
           tdE.colSpan = 4;
-          tdE.className = 'tk-empty';
-          tdE.textContent = Object.keys(tokenSet).length ? 'No tokens match the filter.' : 'No tokens.';
+          var hasAny = Object.keys(tokenSet).length > 0;
+          if (hasAny) {
+            // filtered, no match
+            tdE.appendChild(buildEmptyState('⊘', 'No tokens match the filter',
+              'Clear the filter chips to see all tokens.', null, null));
+          } else if (!lsGet(LS.origin)) {
+            // never configured → open the Connect overlay at step 1
+            tdE.appendChild(buildEmptyState('◎', 'Connect your project',
+              'Sorb needs a bridge URL before it can load your tokens.',
+              'Connect your project', function() { openConnectOverlay(1); }));
+          } else {
+            var cs = $('connPill').getAttribute('data-state');
+            if (cs === 'red' && lsGet(LS.onb) === 'true') {
+              // disconnected (zero-wit; names the origin it checked)
+              var org = tkEscape(connOrigin());
+              tdE.appendChild(buildEmptyState('◌', "Can't reach the bridge",
+                "Sorb can't reach <code>" + org + "</code>. Start <code>sorb dev</code>, then retry.",
+                'Retry', function() { connCheck(); $('committed').click(); }));
+            } else {
+              // configured, empty → Load
+              tdE.appendChild(buildEmptyState('◎', 'No tokens loaded',
+                'Load your tokens from the running app to get started.',
+                'Load tokens', function() { $('committed').click(); }));
+            }
+          }
           trE.appendChild(tdE); body.appendChild(trE);
           return;
         }
 
+        var tierCounts = {};
+        names.forEach(function(n) { var t = tierOf(n); tierCounts[t] = (tierCounts[t] || 0) + 1; });
+        var lastTier = null;
+
         names.forEach(function(name) {
+          var t = tierOf(name);
+          if (t !== lastTier) {
+            var htr = document.createElement('tr');
+            htr.className = 'tk-tier-head';
+            var label = t === '—' ? 'Other' : (t.charAt(0).toUpperCase() + t.slice(1));
+            htr.innerHTML = '<td colspan="4"><span>' + label + '</span>'
+              + '<span class="tk-tier-badge">' + tierCounts[t] + '</span></td>';
+            body.appendChild(htr);
+            lastTier = t;
+          }
           var tr = document.createElement('tr');
 
           var tdIcon = document.createElement('td');
@@ -874,11 +1517,25 @@
           tr.appendChild(tdIcon);
 
           var tdName = document.createElement('td');
+          var nameCell = document.createElement('div');
+          nameCell.className = 'tk-name-cell';
           var spanName = document.createElement('span');
           spanName.className = 'tk-name';
           spanName.title = name;
           spanName.textContent = name;
-          tdName.appendChild(spanName); tr.appendChild(tdName);
+          nameCell.appendChild(spanName);
+
+          // "Used by N" blast-radius badge (U3 · P2) — lazy fetch on click.
+          var uses = document.createElement('button');
+          uses.className = 'tk-uses';
+          uses.title = 'Show components bound to this token';
+          uses.textContent = '◈';
+          uses.onclick = (function(rowName, btn, rowEl) {
+            return function() { toggleUsages(rowName, btn, rowEl); };
+          })(name, uses, tr);
+          nameCell.appendChild(uses);
+
+          tdName.appendChild(nameCell); tr.appendChild(tdName);
 
           var tdVal = document.createElement('td');
           var input = document.createElement('input');
@@ -914,7 +1571,305 @@
           tdAct.appendChild(del); tr.appendChild(tdAct);
 
           body.appendChild(tr);
+
+          // provenance hovercard (U3 · F5)
+          tr.addEventListener('mouseover', (function(rowName, rowTr) {
+            return function() { showHovercard(rowTr, rowName); };
+          })(name, tr));
+          tr.addEventListener('mouseout', hideHovercard);
         });
+      }
+
+      // ── token-provenance hovercard (U3 · F5) ─────────────────────────────
+      function showHovercard(tr, name) {
+        var card = $('tkHovercard');
+        if (!card) return;
+        var type = inferType(tokenSet[name] !== undefined ? tokenSet[name] : '');
+        var cur  = tokenSet[name] !== undefined ? tokenSet[name] : '—';
+        var com  = (committedTokens && committedTokens[name] !== undefined) ? committedTokens[name] : null;
+        var differs = com !== null && com !== cur;
+
+        var comps = [];
+        if (resolvedGraph) {
+          for (var i = 0; i < resolvedGraph.length; i++) {
+            var entry = resolvedGraph[i];
+            if ((entry.name === name || entry.id === name) && Array.isArray(entry.components)) {
+              comps = entry.components.slice(0, 3);
+              break;
+            }
+          }
+        }
+
+        var html = '<div class="hc-type">' + tkEscape(type) + '</div>'
+          + '<div class="hc-row"><span class="hc-label">current</span>'
+          + '<span class="hc-val">' + tkEscape(cur) + '</span></div>'
+          + '<div class="hc-row"><span class="hc-label">committed</span>'
+          + (com === null
+              ? '<span class="hc-val" style="color:var(--soft)">—</span>'
+              : (differs
+                  ? '<span class="hc-amber">●</span><span class="hc-val changed">' + tkEscape(com) + '</span>'
+                  : '<span class="hc-val" style="color:var(--taupe)">' + tkEscape(com) + '</span>'))
+          + '</div>'
+          + '<div class="hc-comps">'
+          + (comps.length ? comps.map(tkEscape).join(' · ') : '<span style="color:var(--soft)">no binding data</span>')
+          + '</div>';
+        card.innerHTML = html;
+
+        var rect = tr.getBoundingClientRect();
+        var left = rect.right + 8;
+        if (left + 240 > window.innerWidth) left = rect.left - 240;
+        card.style.top  = Math.max(0, rect.top) + 'px';
+        card.style.left = Math.max(0, left) + 'px';
+
+        card.setAttribute('aria-hidden', 'false');
+        card.classList.add('visible');
+        hcVisible = true;
+      }
+
+      function hideHovercard() {
+        var card = $('tkHovercard');
+        if (card) { card.classList.remove('visible'); card.setAttribute('aria-hidden', 'true'); }
+        hcVisible = false;
+      }
+
+      // ── "Used by N" blast-radius (U3 · P2) ───────────────────────────────
+      // Rows key by hyphenated token NAME; the bridge /usages cssVar form is the
+      // same name with a "--" prefix, so we query by cssVar (no id map needed).
+      function cssVarForName(name) {
+        var s = String(name);
+        return s.indexOf('--') === 0 ? s : '--' + s;
+      }
+
+      // Toggle an inline detail row beneath the token row. First open fetches.
+      function toggleUsages(name, btn, rowEl) {
+        var existing = rowEl.nextSibling;
+        if (existing && existing._tkUsesFor === name) {           // collapse
+          existing.parentNode.removeChild(existing);
+          btn.classList.remove('open');
+          return;
+        }
+        var origin = trimOrigin();
+        if (!origin) {
+          btn.textContent = '◈ —'; btn.classList.add('muted');
+          btn.title = 'Set Bridge origin in Settings.';
+          return;
+        }
+        btn.textContent = '◈ …';
+        var cssVar = cssVarForName(name);
+        bfetch(origin + '/usages?cssVar=' + encodeURIComponent(cssVar))
+          .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+          .then(function(data) {
+            var count = (typeof data.count === 'number')
+              ? data.count
+              : ((data.components && data.components.length) || 0);
+            btn.classList.remove('muted');
+            btn.textContent = '◈ ' + count;
+            insertUsagesDetail(name, rowEl, data.components || []);
+            btn.classList.add('open');
+          })
+          .catch(function(e) {
+            btn.textContent = '◈ —'; btn.classList.add('muted');
+            btn.title = 'Bridge offline — ' + e.message;
+          });
+      }
+
+      // Build (or replace) the inline detail row listing affected components.
+      function insertUsagesDetail(name, rowEl, components) {
+        var prev = rowEl.nextSibling;
+        if (prev && prev._tkUsesFor === name) prev.parentNode.removeChild(prev);
+
+        var tr = document.createElement('tr');
+        tr._tkUsesFor = name;
+        var td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'tk-uses-detail';
+
+        if (!components.length) {
+          td.className += ' empty';
+          td.textContent = 'No components bind this token.';
+        } else {
+          components.forEach(function(c) {
+            var line = document.createElement('div');
+            line.className = 'tk-uses-row';
+            var role = document.createElement('span');
+            role.className = 'tk-uses-role';
+            role.textContent = c.role || '?';
+            line.appendChild(document.createTextNode((c.storyId || '?') + ' · '));
+            line.appendChild(role);
+            td.appendChild(line);
+          });
+        }
+        tr.appendChild(td);
+        if (rowEl.nextSibling) rowEl.parentNode.insertBefore(tr, rowEl.nextSibling);
+        else rowEl.parentNode.appendChild(tr);
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // GRAFT PICKER (U3 · P4) — copy a source component's theme onto a target,
+      // reconciled by role. Apply routes through the SAME live /preview session
+      // path a table edit uses (write tokenSet → onTokenEdit → debounced PUT).
+      // ════════════════════════════════════════════════════════════════════
+
+      // Token ids are dotted (e.g. "button.primary.bg.default"); tokenSet keys
+      // are the hyphenated NAME form. Map id → working-set key by dots → hyphens.
+      function idToName(id) { return String(id).replace(/\./g, '-'); }
+
+      $('graftToggle').onclick = function() {
+        graftOpen = !graftOpen;
+        $('graftBody').hidden = !graftOpen;
+        $('graftToggleLabel').textContent = graftOpen ? 'Graft a theme ▾' : 'Graft a theme ▸';
+        if (graftOpen) loadGraftComponents();
+      };
+
+      // Populate both <select>s from GET /artifacts (the captured stories list).
+      function loadGraftComponents() {
+        var origin = trimOrigin();
+        if (!origin) { setStatus('Set Bridge origin in Settings.', true); return; }
+        bfetch(origin + '/artifacts')
+          .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+          .then(function(idx) {
+            var stories = idx.stories || {};
+            var seen = {}, opts = [];
+            Object.keys(stories).forEach(function(id) {
+              var s = stories[id] || {};
+              var key = s.component || id;
+              if (seen[key]) return;
+              seen[key] = true;
+              opts.push({ value: id, label: key });
+            });
+            opts.sort(function(a, b) { return a.label.localeCompare(b.label); });
+            fillGraftSelect($('graftFrom'), opts);
+            fillGraftSelect($('graftTo'), opts);
+          })
+          .catch(function(e) { setStatus('Could not load components for graft: ' + e.message, true); });
+      }
+
+      function fillGraftSelect(sel, opts) {
+        sel.innerHTML = '';
+        var ph = document.createElement('option');
+        ph.value = ''; ph.textContent = '— pick component —';
+        sel.appendChild(ph);
+        opts.forEach(function(o) {
+          var el = document.createElement('option');
+          el.value = o.value; el.textContent = o.label;
+          sel.appendChild(el);
+        });
+      }
+
+      $('graftPlanBtn').onclick = function() {
+        var origin = trimOrigin();
+        if (!origin) { setStatus('Set Bridge origin in Settings.', true); return; }
+        var from = $('graftFrom').value, to = $('graftTo').value;
+        if (!from || !to) { setStatus('Pick a source and a target component.', true); return; }
+        if (from === to) { setStatus('Source and target must differ.', true); return; }
+        setStatus('Planning graft…');
+        bfetch(origin + '/graft/plan', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ from: from, to: to }),
+        })
+          .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+          .then(function(plan) { lastGraftPlan = plan; renderGraftPlan(plan); setStatus('Graft plan ready.'); })
+          .catch(function(e) { setStatus('Graft plan failed: ' + e.message, true); });
+      };
+
+      // Render changeset + conflicts. Conflicts shown but NOT applied; a target
+      // flagged deprecated is warned + skipped.
+      function renderGraftPlan(plan) {
+        var box = $('graftResult');
+        box.hidden = false; box.innerHTML = '';
+        var changeset = (plan && plan.changeset) || [];
+        var conflicts = (plan && plan.conflicts) || [];
+
+        if (!changeset.length && !conflicts.length) {
+          var none = document.createElement('div');
+          none.className = 'graft-empty';
+          none.textContent = 'No graftable roles between these components.';
+          box.appendChild(none);
+          return;
+        }
+
+        if (changeset.length) {
+          var title = document.createElement('div');
+          title.className = 'graft-section-title';
+          title.textContent = 'Changeset (' + changeset.length + ')';
+          box.appendChild(title);
+          changeset.forEach(function(row) {
+            var line = document.createElement('div');
+            line.className = 'graft-cs-row';
+            var deprecated = isDeprecatedTarget(row);
+            var role = document.createElement('span');
+            role.className = 'graft-cs-role'; role.textContent = row.role || '?';
+            line.appendChild(role);
+            line.appendChild(document.createTextNode(String(row.sourceTokenId || '?')));
+            var arrow = document.createElement('span');
+            arrow.className = 'graft-cs-arrow'; arrow.textContent = '→';
+            line.appendChild(arrow);
+            line.appendChild(document.createTextNode(String(row.targetTokenId || '?')));
+            if (deprecated) {
+              var dep = document.createElement('span');
+              dep.className = 'graft-deprecated'; dep.textContent = ' (deprecated — skipped)';
+              line.appendChild(dep);
+            }
+            box.appendChild(line);
+          });
+        }
+
+        if (conflicts.length) {
+          var ctitle = document.createElement('div');
+          ctitle.className = 'graft-section-title conflicts';
+          ctitle.textContent = 'Conflicts — NOT applied (' + conflicts.length + ')';
+          box.appendChild(ctitle);
+          conflicts.forEach(function(c) {
+            var line = document.createElement('div');
+            line.className = 'graft-cs-row graft-conflict';
+            var role = document.createElement('span');
+            role.className = 'graft-cs-role'; role.textContent = (c && c.role) || '?';
+            line.appendChild(role);
+            line.appendChild(document.createTextNode((c && c.reason) || 'role/type mismatch'));
+            box.appendChild(line);
+          });
+        }
+
+        // Apply acts ONLY on the (non-deprecated) changeset. User-click gated.
+        var applyable = changeset.filter(function(r) { return !isDeprecatedTarget(r); });
+        var apply = document.createElement('button');
+        apply.className = 'primary graft-apply'; apply.type = 'button';
+        apply.textContent = 'Apply ' + applyable.length + ' graft' + (applyable.length === 1 ? '' : 's');
+        apply.disabled = !applyable.length;
+        apply.onclick = function() { applyGraft(applyable); };
+        box.appendChild(apply);
+      }
+
+      function isDeprecatedTarget(row) {
+        if (!row) return false;
+        return row['$deprecated'] === true || row.deprecated === true ||
+               (row.target && row.target['$deprecated'] === true);
+      }
+
+      // Apply: write source values into tokenSet for each changeset target, then
+      // drive the EXISTING render + debounced live-preview PUT via onTokenEdit()
+      // — the same path table edits use. Never writes source/main; Open-PR reads
+      // tokenSet.
+      function applyGraft(rows) {
+        if (!rows || !rows.length) return;
+        var applied = 0, missing = [];
+        rows.forEach(function(row) {
+          var srcKey = idToName(row.sourceTokenId);
+          var tgtKey = idToName(row.targetTokenId);
+          if (!(srcKey in tokenSet)) {
+            if (typeof row.sourceValue !== 'undefined' && row.sourceValue !== null) {
+              tokenSet[tgtKey] = row.sourceValue; applied++;
+            } else { missing.push(srcKey); }
+            return;
+          }
+          tokenSet[tgtKey] = tokenSet[srcKey]; applied++;
+        });
+        renderTokenTable();   // re-render from the mutated working set
+        onTokenEdit();        // syncs raw mirror + updateCta + debounced /preview PUT
+        var msg = 'Grafted ' + applied + ' role' + (applied === 1 ? '' : 's') + ' into the working set';
+        msg += livePreviewId ? ' — live preview updating.' : ' — click Preview in app to push.';
+        if (missing.length) msg += ' (' + missing.length + ' source token(s) not in set, skipped)';
+        setStatus(msg);
       }
 
       // ════════════════════════════════════════════════════════════════════
@@ -1000,6 +1955,7 @@
         rawOpen = !rawOpen;
         $('tkRawWrap').hidden = !rawOpen;
         $('tkTableWrap').hidden = rawOpen;
+        var gp = $('graftPanel'); if (gp) gp.hidden = rawOpen;   // hide graft with the table (U3 · P4)
         $('tkRaw').classList.toggle('active', rawOpen);
         if (rawOpen) { $('tkFilters').hidden = true; syncRawFromSet(); }  // serialize set into the editor
         else renderTokenChips();                   // restore correct chip visibility
@@ -1272,10 +2228,13 @@
           var tr = document.createElement('tr');
           var td = document.createElement('td');
           td.colSpan = 5;
-          td.className = 'sb-empty';
-          td.innerHTML = sbRows.length
-            ? 'No stories match the filter.'
-            : 'No captured stories.<br>Run <code>sorb-seed capture</code>, then click ↻.';
+          if (sbRows.length) {
+            td.appendChild(buildEmptyState('⊘', 'No stories match the filter',
+              'Clear the filter chips to see all stories.', null, null));
+          } else {
+            td.appendChild(buildEmptyState('⬚', 'No stories captured yet',
+              'Run <code>sorb-seed capture</code> in your project, then click ↻ to refresh.', null, null));
+          }
           tr.appendChild(td); body.appendChild(tr);
           $('sbCheckAll').checked = false;
           return;
@@ -1413,26 +2372,50 @@
       }
 
       // ════════════════════════════════════════════════════════════════════
-      // CONNECTION-STATUS PILL — polls <bridgeOrigin>/health every 5 s
+      // TRUST PILL — polls <bridgeOrigin>/health every 5 s (U3 · Feature A)
       // ════════════════════════════════════════════════════════════════════
       //
-      // State machine: 'disconnected' (initial) | 'connected' | 'error'
-      //   connected    — HTTP 200 from /health
-      //   error        — non-200 response (server reachable but unhealthy)
-      //   disconnected — network error, timeout, or no origin set
+      // Four states (bridge health × last-verify recency), driven by a BOOLEAN
+      // httpOk into setConnState():
+      //   green-live   — /health 200 AND last verify < 5 min ago
+      //   green-stale  — /health 200 AND last verify ≥ 5 min ago
+      //   amber        — /health 200 but never verified (no lastVerifiedAt)
+      //   red          — non-200 / unreachable / no origin
 
       var connPollTimer = null;
 
-      var CONN_LABELS = { connected: 'Connected', disconnected: 'Disconnected', error: 'Error' };
       var CONN_POLL_MS  = 5000;  // repeat interval
       var CONN_TIMEOUT_MS = 3000; // AbortController timeout per request
+      var VERIFY_STALE_MS = 5 * 60 * 1000;   // 5 minutes → green-live vs green-stale (U3 · Feature A)
 
-      function setConnState(state) {
-        var pill  = $('connPill');
-        var label = $('connLabel');
+      // U3 · Feature E — sync-freshness heartbeat watchdog state.
+      var FRESH_STALE_MS = 4000;   // > 2× the 1500ms poll → "went quiet"
+      var freshWatchdog = null, freshLastChange = null;
+
+      // U3 · Feature A — four-state trust pill (bridge health × last-verify recency).
+      function fmtElapsed(isoTs) {
+        var ms = Date.now() - new Date(isoTs).getTime();
+        if (ms < 0) return 'just now';
+        var s = Math.floor(ms / 1000);      if (s < 60) return s + 's ago';
+        var m = Math.floor(s / 60);         if (m < 60) return m + 'm ago';
+        var h = Math.floor(m / 60);         if (h < 24) return h + 'h ago';
+        return Math.floor(h / 24) + 'd ago';
+      }
+      function resolveConnState(httpOk) {
+        if (!httpOk) return { state: 'red', label: 'bridge unreachable' };
+        var ts = lsGet(LS.lastVerifiedAt);
+        if (!ts) return { state: 'amber', label: 'not yet verified' };
+        var live = (Date.now() - new Date(ts).getTime()) < VERIFY_STALE_MS;
+        return { state: live ? 'green-live' : 'green-stale', label: 'verified ' + fmtElapsed(ts) };
+      }
+      function setConnState(httpOk) {              // NOTE: signature changed string → boolean
+        var pill = $('connPill'), label = $('connLabel');
         if (!pill || !label) return;
-        pill.setAttribute('data-state', state);
-        label.textContent = CONN_LABELS[state] || state;
+        var r = resolveConnState(httpOk);
+        pill.setAttribute('data-state', r.state);
+        label.textContent = r.label;
+        var ts = lsGet(LS.lastVerifiedAt);
+        pill.title = ts ? ('Last verified: ' + new Date(ts).toLocaleString()) : 'Bridge connection status';
       }
 
       function connOrigin() {
@@ -1440,26 +2423,294 @@
         return (raw || DEFAULT_ORIGIN).trim().replace(/\/$/, '');
       }
 
+      // U3 · Feature A — SHA-256 of the committed token map; also seeds the drift
+      // snapshot. Authed route → via bfetch.
+      async function hashTokenLatest(origin) {
+        if (!origin) return null;
+        try {
+          var res = await bfetch(origin + '/tokens/latest');
+          if (!res.ok) return null;
+          var json = await res.json();
+          var keys = Object.keys(json).sort(), stable = {};
+          for (var i = 0; i < keys.length; i++) stable[keys[i]] = json[keys[i]];
+          var stableStr = JSON.stringify(stable);
+          lsSet(LS.lastTokenSnapshot, stableStr);            // side-effect: seed drift snapshot
+          var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stableStr));
+          return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+        } catch (e) { return null; }
+      }
+
+      // U3 · Feature E — heartbeat dot renderer + watchdog.
+      function setFreshness(state, meta) {
+        var dot = $('freshDot'); if (!dot) return;
+        dot.setAttribute('data-fresh', state);
+        if (state === 'error')      dot.title = 'Auto-sync poll error: ' + ((meta && meta.error) || 'unknown');
+        else if (state === 'off')   dot.title = 'Auto-sync off';
+        else dot.title = 'Auto-sync ' + (state === 'live' ? 'live' : 'quiet')
+                       + (freshLastChange ? ' · last change ' + fmtElapsed(freshLastChange) : '');
+      }
+      function armFreshWatchdog() {
+        if (freshWatchdog) clearTimeout(freshWatchdog);
+        freshWatchdog = setTimeout(function() { if ($('autoSync').checked) setFreshness('stale'); }, FRESH_STALE_MS);
+      }
+
+      // U3 · Feature D — ambient teammate-activity (needs juice /verify/activity;
+      // degrades hidden if the route is absent). Authed route → via bfetch.
+      function postVerifyActivity() {
+        var origin = trimOrigin();
+        if (!origin || !figmaUserName) return;
+        bfetch(origin + '/verify/activity', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: figmaUserName })
+        }).catch(function(e) { /* non-critical */ });
+      }
+      function showTeammateIndicator(entry) {
+        var el = $('teammateIndicator'); if (!el) return;
+        if (!entry || !entry.displayName) { el.style.display = 'none'; return; }
+        el.style.display = 'block';
+        el.textContent = entry.displayName.split(' ')[0] + ' verified ' + fmtElapsed(entry.verifiedAt);
+      }
+      function fetchTeammateActivity() {
+        var origin = trimOrigin(); if (!origin) return;
+        var url = origin + '/verify/activity';
+        if (figmaUserName) url += '?exclude=' + encodeURIComponent(figmaUserName);
+        bfetch(url, { signal: AbortSignal.timeout(2000) })
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(data) { showTeammateIndicator(data && data.latest ? data.latest : null); })
+          .catch(function(e) { showTeammateIndicator(null); });
+      }
+
       function connCheck() {
         var origin = connOrigin();
-        if (!origin) { setConnState('disconnected'); return; }
+        if (!origin) { setConnState(false); return; }
         var ctrl = new AbortController();
         var timeoutId = setTimeout(function() { ctrl.abort(); }, CONN_TIMEOUT_MS);
         fetch(origin + '/health', { signal: ctrl.signal })
           .then(function(res) {
             clearTimeout(timeoutId);
-            setConnState(res.ok ? 'connected' : 'error');
+            setConnState(res.ok);
           })
           .catch(function(e) {
             clearTimeout(timeoutId);
-            setConnState('disconnected');
+            setConnState(false);
           });
+        fetchTeammateActivity();
       }
 
       function connStartPoll() {
         if (connPollTimer) clearInterval(connPollTimer);
         connCheck();                              // immediate first check
         connPollTimer = setInterval(connCheck, CONN_POLL_MS);
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // U3 — reconciled 4-step Connect onboarding overlay (F4 chrome × F6 gate)
+      // ════════════════════════════════════════════════════════════════════
+
+      function closeConnectOverlay() {
+        var o = $('obOverlay');
+        if (o && o.parentNode) o.parentNode.removeChild(o);
+      }
+
+      // Terminal exits — the ONLY writers of sorb.onboarded here (§2 schema):
+      //   step-4 preview 200  → path 'connect'
+      //   "Do this later"      → path 'skipped'
+      // ("Try the live demo" writes path 'demo' from #pathDemo, unchanged.)
+      function finishOnboarding(path) {
+        lsSet(LS.onb, 'true');
+        lsSet(LS.onbPath, path);
+        closeConnectOverlay();
+        showMain();               // idempotent — ensures tabs/Tokens visible behind the closed scrim
+      }
+
+      function obSetStatus(id, cls, text) {
+        var el = $(id);
+        if (!el) return;
+        el.className = 'ob-status ' + (cls || 'muted');
+        el.innerHTML = text;
+      }
+
+      function obDots(active) {
+        var dots = document.querySelectorAll('.ob-dot');
+        for (var i = 0; i < dots.length; i++) {
+          var n = i + 1;
+          dots[i].classList.remove('active', 'done');
+          if (n < active) dots[i].classList.add('done');
+          else if (n === active) dots[i].classList.add('active');
+        }
+      }
+
+      // Step 3 — auto-load committed tokens on mount; Next gated on success.
+      function obLoadStep() {
+        var next = $('obStep3Next');
+        if (next) next.disabled = true;
+        obSetStatus('obStep3Status', 'muted', 'Loading your tokens…');
+        var origin = trimOrigin();
+        if (!origin) { obSetStatus('obStep3Status', 'err', 'No bridge URL — go back to Step 1.'); return; }
+        bfetch(origin + '/tokens/latest')
+          .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function(json) {
+            setTokenSet(json, { silent: true });
+            var n = Object.keys(json).length;
+            obSetStatus('obStep3Status', 'ok', '✓ ' + n + ' token' + (n === 1 ? '' : 's') + ' loaded');
+            if (next) next.disabled = false;
+          })
+          .catch(function(e) {
+            obSetStatus('obStep3Status', 'err', "Can't reach the bridge — check Step 1. "
+              + '<a href="#" id="obStep3Retry" style="color:var(--blaze-ink)">Retry</a>');
+            var r = $('obStep3Retry');
+            if (r) r.onclick = function(ev) { ev.preventDefault(); obLoadStep(); };
+          });
+      }
+
+      function obShow(n) {
+        obStep = n;
+        [1, 2, 3, 4].forEach(function(i) {
+          var el = $('obStep' + i); if (el) el.style.display = (i === n ? '' : 'none');
+          var c  = $('obCta' + i);  if (c)  c.style.display  = (i === n ? '' : 'none');
+        });
+        obDots(n);
+        // relocate the single "Do this later" link into the current step's CTA area
+        var later = $('obLater'), cta = $('obCta' + n);
+        if (later && cta) cta.appendChild(later);
+        if (n === 3) obLoadStep();
+      }
+
+      function buildConnectOverlay() {
+        closeConnectOverlay();
+        var overlay = document.createElement('div'); overlay.id = 'obOverlay';
+        var card = document.createElement('div'); card.id = 'obCard';
+
+        // dots
+        var dots = document.createElement('div'); dots.className = 'ob-dots';
+        [1, 2, 3, 4].forEach(function(i) {
+          if (i > 1) { var ln = document.createElement('div'); ln.className = 'ob-dot-line'; dots.appendChild(ln); }
+          var d = document.createElement('div'); d.className = 'ob-dot' + (i === 1 ? ' active' : '');
+          d.textContent = i; dots.appendChild(d);
+        });
+        card.appendChild(dots);
+
+        // Step 1 — Bridge URL (health test blocks Next)
+        var s1 = document.createElement('div'); s1.id = 'obStep1'; s1.className = 'ob-step';
+        s1.innerHTML = '<h3>Connect to your bridge</h3>'
+          + '<p>Paste the URL where <code>sorb dev</code> is running, then Test.</p>';
+        var in1 = document.createElement('input'); in1.className = 'ob-input'; in1.id = 'obOriginInput';
+        in1.type = 'text'; in1.placeholder = DEFAULT_ORIGIN;
+        in1.value = lsGet(LS.origin) || DEFAULT_ORIGIN;
+        s1.appendChild(in1);
+        var st1 = document.createElement('div'); st1.id = 'obStep1Status'; st1.className = 'ob-status muted';
+        s1.appendChild(st1);
+        card.appendChild(s1);
+
+        // Step 2 — App URL (ping; Continue-anyway carve-out)
+        var s2 = document.createElement('div'); s2.id = 'obStep2'; s2.className = 'ob-step'; s2.style.display = 'none';
+        s2.innerHTML = '<h3>Point at your running app</h3>'
+          + '<p>The page Sorb opens to show your live preview.</p>';
+        var in2 = document.createElement('input'); in2.className = 'ob-input'; in2.id = 'obAppInput';
+        in2.type = 'text'; in2.placeholder = DEFAULT_APP;
+        in2.value = lsGet(LS.app) || DEFAULT_APP;
+        s2.appendChild(in2);
+        var st2 = document.createElement('div'); st2.id = 'obStep2Status'; st2.className = 'ob-status muted';
+        s2.appendChild(st2);
+        card.appendChild(s2);
+
+        // Step 3 — Load from App (auto-fires on mount)
+        var s3 = document.createElement('div'); s3.id = 'obStep3'; s3.className = 'ob-step'; s3.style.display = 'none';
+        s3.innerHTML = '<h3>Load your tokens</h3>'
+          + '<p>Pulling the committed token set from your bridge.</p>';
+        var st3 = document.createElement('div'); st3.id = 'obStep3Status'; st3.className = 'ob-status muted';
+        s3.appendChild(st3);
+        card.appendChild(s3);
+
+        // Step 4 — Preview (terminal; success auto-dismisses)
+        var s4 = document.createElement('div'); s4.id = 'obStep4'; s4.className = 'ob-step'; s4.style.display = 'none';
+        s4.innerHTML = '<h3>See it live</h3>'
+          + '<p>Open your app with the current tokens applied. That confirms the round-trip works.</p>';
+        var st4 = document.createElement('div'); st4.id = 'obStep4Status'; st4.className = 'ob-status muted';
+        s4.appendChild(st4);
+        card.appendChild(s4);
+
+        // "Do this later" — one link, moved into the active step's CTA (every step).
+        var later = document.createElement('button'); later.id = 'obLater'; later.type = 'button';
+        later.textContent = 'Do this later';
+        later.onclick = function() { finishOnboarding('skipped'); };
+
+        // CTA areas — one per step
+        [1, 2, 3, 4].forEach(function(i) {
+          var cta = document.createElement('div'); cta.className = 'ob-cta'; cta.id = 'obCta' + i;
+          var btn = document.createElement('button'); btn.className = 'primary';
+
+          if (i === 1) {
+            btn.id = 'obStep1Next'; btn.textContent = 'Test & continue';
+            btn.onclick = function() {
+              var url = in1.value.trim();
+              obSetStatus('obStep1Status', 'muted', 'Testing…');
+              testConnection(url, 'health', function(res) {
+                obSetStatus('obStep1Status', res.ok ? 'ok' : 'err', (res.ok ? '✓ ' : '✗ ') + res.label);
+                if (res.ok) {
+                  lsSet(LS.origin, url.replace(/\/$/, '')); $('origin').value = url.replace(/\/$/, '');
+                  connStartPoll();
+                  obShow(2);
+                }
+              });
+            };
+          } else if (i === 2) {
+            btn.id = 'obStep2Next'; btn.textContent = 'Test & continue';
+            btn.onclick = function() {
+              var url = in2.value.trim();
+              obSetStatus('obStep2Status', 'muted', 'Testing…');
+              testConnection(url, 'ping', function(res) {
+                obAppOk = res.ok;
+                lsSet(LS.app, url); $('appUrl').value = url;
+                if (res.ok) {
+                  obSetStatus('obStep2Status', 'ok', '✓ ' + res.label);
+                  obShow(3);
+                } else {
+                  // CORS carve-out — offer Continue anyway (§3): the block is a platform limit.
+                  obSetStatus('obStep2Status', 'err', '✗ ' + res.label
+                    + ' <button class="ob-continue" id="obStep2Continue">Continue anyway</button>');
+                  var c = $('obStep2Continue');
+                  if (c) c.onclick = function() { lsSet(LS.app, url); obShow(3); };
+                }
+              });
+            };
+          } else if (i === 3) {
+            btn.id = 'obStep3Next'; btn.textContent = 'Next →'; btn.disabled = true;
+            btn.onclick = function() { obShow(4); };
+          } else {
+            btn.id = 'obStep4Preview'; btn.textContent = 'Preview in app ↗';
+            btn.onclick = function() {
+              btn.disabled = true; btn.textContent = 'Opening preview…';
+              // Detect the existing #preview handler's outcome via a one-shot setStatus wrap.
+              var origSetStatus = setStatus;
+              setStatus = function(html, isErr) {
+                origSetStatus(html, isErr);
+                setStatus = origSetStatus;                 // restore after first call
+                if (!isErr && String(html).indexOf('Preview') !== -1) {
+                  finishOnboarding('connect');             // 200 → path 'connect', auto-dismiss
+                } else if (isErr) {
+                  obSetStatus('obStep4Status', 'err', "Preview didn't start — is the app running? "
+                    + '<a href="#" id="obStep4Retry" style="color:var(--blaze-ink)">Retry</a>');
+                  btn.disabled = false; btn.textContent = 'Preview in app ↗';
+                  var r = $('obStep4Retry'); if (r) r.onclick = function(ev) { ev.preventDefault(); btn.click(); };
+                }
+              };
+              $('preview').click();                        // existing §7 handler — unmodified
+            };
+          }
+          cta.appendChild(btn); card.appendChild(cta);
+        });
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        $('obCta1').appendChild(later);   // attach escape hatch AFTER mount so getElementById resolves
+      }
+
+      // Public entry — mount the overlay at a given step (default 1).
+      function openConnectOverlay(startStep) {
+        buildConnectOverlay();
+        obShow(startStep || 1);
+        if ((startStep || 1) === 1) obSetStatus('obStep1Status', 'muted', '');
       }
 
       // Re-start the poll immediately when the bridge origin changes in Settings.
@@ -1469,6 +2720,73 @@
 
       // Kick off the poll on load.
       connStartPoll();
+
+      // hide the provenance hovercard when the token table scrolls (U3 · F5)
+      $('tkTableWrap').addEventListener('scroll', hideHovercard);
+
+      // Re-entry: a returning user with an unreachable bridge (red pill) jumps
+      // straight to step 1 (not the intro). (U3 · reconciled to A's 4-state pill.)
+      $('connPill').style.cursor = 'pointer';
+      $('connPill').title = 'Bridge connection status — click to re-run Connect setup';
+      $('connPill').onclick = function() {
+        var s = $('connPill').getAttribute('data-state');
+        if (s === 'red') openConnectOverlay(1);
+      };
+
+      // ── drift banner on open (U3 · Feature C) — name-first, dismiss per-hash ──
+      function diffTokens(snapshotJson, currentObj) {
+        var snapshot; try { snapshot = JSON.parse(snapshotJson); } catch (e) { return []; }
+        var changed = [], seen = {}, all = Object.keys(currentObj).concat(Object.keys(snapshot));
+        for (var i = 0; i < all.length; i++) {
+          var k = all[i]; if (seen[k]) continue; seen[k] = true;
+          if (currentObj[k] !== snapshot[k]) changed.push(k);
+        }
+        return changed.sort();
+      }
+      function driftBannerText(changed) {                     // F7 name-first invariant
+        if (!changed || changed.length === 0) return '';
+        if (changed.length === 1) return changed[0] + ' changed since last verify';
+        if (changed.length === 2) return changed[0] + ' and ' + changed[1] + ' changed since last verify';
+        if (changed.length === 3) return changed[0] + ', ' + changed[1] + ' and ' + changed[2] + ' changed since last verify';
+        return changed[0] + ', ' + changed[1] + ', ' + changed[2] + ' and ' + (changed.length - 3) + ' others changed since last verify';
+      }
+      function showDriftBanner(text, currentHash) {
+        var existing = document.getElementById('driftBanner');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        var bar = document.createElement('div'); bar.id = 'driftBanner'; bar.className = 'drift-banner';
+        var msg = document.createElement('span'); msg.className = 'drift-banner-msg'; msg.textContent = text;
+        var x = document.createElement('button'); x.className = 'drift-banner-dismiss';
+        x.setAttribute('aria-label', 'Dismiss drift warning'); x.textContent = '×';
+        x.onclick = function() {
+          try { sessionStorage.setItem('sorb_drift_dismissed_' + currentHash, '1'); } catch (e) {}
+          if (bar.parentNode) bar.parentNode.removeChild(bar);
+        };
+        bar.appendChild(msg); bar.appendChild(x);
+        $('tabs').insertAdjacentElement('afterend', bar);     // full-width, under tabs, above active view
+      }
+      (function driftCheckOnOpen() {
+        if (lsGet(LS.onb) !== 'true') return;                 // never behind the intro's hidden tabs
+        var storedHash = lsGet(LS.lastTokenHash); if (!storedHash) return;
+        var origin = trimOrigin(); if (!origin) return;
+        bfetch(origin + '/tokens/latest')                     // authed route → bfetch
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(currentObj) {
+            if (!currentObj) return;
+            var keys = Object.keys(currentObj).sort(), stable = {};
+            for (var i = 0; i < keys.length; i++) stable[keys[i]] = currentObj[keys[i]];
+            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(stable))).then(function(buf) {
+              var currentHash = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+              if (currentHash === storedHash) return;
+              try { if (sessionStorage.getItem('sorb_drift_dismissed_' + currentHash)) return; } catch (e) {}
+              var snap = lsGet(LS.lastTokenSnapshot);
+              var changed = snap ? diffTokens(snap, currentObj) : [];
+              if (!changed.length) return;
+              var text = driftBannerText(changed); if (!text) return;
+              showDriftBanner(text, currentHash);
+            });
+          })
+          .catch(function(e) {});
+      })();
 
       // initialise — seed an empty working set (renders the table/chips)
       setTokenSet({}, { silent: true });
