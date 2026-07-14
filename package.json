@@ -2,7 +2,7 @@
   "name": "@sorb/canopy",
   "version": "1.3.0",
   "private": true,
-  "description": "Figma plugin that previews proposed design tokens in your app via the Sorb bridge — the canopy: your app's foliage seen in Figma",
+  "description": "Figma plugin for Sorb, the design-token bridge for your running app — propose a token and preview it live on real components. (Canopy: your app's foliage, seen in Figma.)",
   "scripts": {
     "build": "echo \"no build step — plain code.js + ui.html loaded directly by Figma\" && exit 0"
   }

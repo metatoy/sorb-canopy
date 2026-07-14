@@ -1,9 +1,12 @@
 # @sorb/canopy
 
-Figma plugin that automates the Sorb preview loop: it reads your file's
-**Variables**, maps them to Sorb's `name → value` token shape, POSTs them
-to the local [bridge](../cli) (`POST /preview`), and opens your app at
-`?preview=<id>` — exactly what you'd otherwise do by hand with `curl`.
+Figma plugin for Sorb, the design-token bridge for your running app — propose a
+token and preview it live on real components. (Canopy: your app's foliage, seen in Figma.)
+
+It automates the Sorb preview loop: it reads your file's **Variables**, maps
+them to Sorb's `name → value` token shape, POSTs them to the local
+[bridge](../cli) (`POST /preview`), and opens your app at `?preview=<id>` —
+exactly what you'd otherwise do by hand with `curl`.
 
 It's plain `code.js` + `ui.html` (no build step), loaded directly by Figma.
 
