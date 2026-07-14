@@ -93,6 +93,47 @@
       .links a { color:var(--blaze-ink); text-decoration:none; font-weight:550; }
       .links a:hover { text-decoration:underline; }
 
+      /* ── Part 8 · handshake — outline-blaze emphasized secondary card ──── */
+      .card.sec.accent { border-color:var(--blaze); }
+      .card.sec.accent .ct { color:var(--blaze-ink); }
+      .card.sec.accent .arw { color:var(--blaze); }
+
+      /* ── Part 8 · redeem / invite flow screens (full-height front doors) ── */
+      .flow { display:none; flex-direction:column; padding:18px 20px 16px; min-height:520px; }
+      .flow.show { display:flex; }
+      .flow-back { background:none; border:0; padding:0; color:var(--soft); font-size:11px;
+        font-weight:550; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
+        margin-bottom:12px; width:auto; flex:0 0 auto; }
+      .flow-back:hover { color:var(--ink); }
+      .flow-h { font-size:17px; font-weight:650; letter-spacing:-.01em; margin:0 0 5px; }
+      .flow-p { font-size:12px; color:var(--ink-2); line-height:1.5; margin:0 0 14px; }
+      .invite-ta { width:100%; height:96px; border:1px solid var(--line); border-radius:8px;
+        padding:9px 10px; font-family:var(--mono); font-size:11px; line-height:1.5; resize:none;
+        color:var(--ink); background:var(--surface); word-break:break-all; }
+      .invite-ta:focus-visible { outline:2px solid var(--blaze); outline-offset:1px; border-color:var(--blaze); }
+      .redeem-cta { width:100%; margin-top:12px; background:var(--blaze); color:#fff; border:none;
+        border-radius:8px; padding:11px; font-size:13px; font-weight:650; cursor:pointer; flex:0 0 auto; }
+      .redeem-hint, .copy-hint { font-size:10.5px; color:var(--taupe); margin-top:9px; line-height:1.45; }
+      .msg-box { border:1px solid var(--line); border-radius:8px; background:var(--surface-2);
+        padding:12px 13px; font-size:11.5px; line-height:1.6; color:var(--ink-2); white-space:pre-wrap; }
+      .msg-box code { font-family:var(--mono); font-size:11px; background:var(--line-2);
+        padding:1px 5px; border-radius:4px; color:var(--ink); }
+      .msg-box .step-n { color:var(--blaze-ink); font-weight:650; }
+      .copy-cta { width:100%; margin-top:12px; background:var(--blaze); color:#fff; border:none;
+        border-radius:8px; padding:11px; font-size:13px; font-weight:650; cursor:pointer;
+        display:flex; align-items:center; justify-content:center; gap:8px; flex:0 0 auto; }
+      .copy-cta svg { display:block; }
+
+      /* ── Part 8 · Settings "Advanced" disclosure ──────────────────────── */
+      .adv { margin-top:8px; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
+      .adv-sum { list-style:none; cursor:pointer; padding:10px 12px; font-size:12.5px; font-weight:650;
+        color:var(--ink); user-select:none; display:flex; align-items:center; gap:6px; }
+      .adv-sum::-webkit-details-marker { display:none; }
+      .adv-sum::before { content:'\25B8'; color:var(--taupe); font-size:11px; transition:transform .12s; }
+      .adv[open] .adv-sum::before { transform:rotate(90deg); }
+      .adv-hint { font-weight:400; color:var(--soft); font-size:11px; }
+      .adv-body { padding:2px 12px 12px; border-top:1px solid var(--line-2); }
+
       /* ── primary CTA + secondary actions (tokens foot) ───────────────── */
       .foot { border-top:1px solid var(--line); padding:11px 13px 12px; background:var(--surface);
         margin:12px -14px -14px; }
@@ -599,14 +640,25 @@
         <div class="feat"><div class="fl">See it live</div><div class="fc">Watch it land in the running app.</div></div>
         <div class="feat"><div class="fl">Verify</div><div class="fc">Confirm it before you merge.</div></div>
       </div>
-      <!-- Front door (C1): Connect is the confident solid-blaze primary while the
-           hosted demo is unavailable; the demo is a quiet dashed COMING-SOON strip
-           (disabled, not a tab stop). Both invert once DEMO_APP + DEMO_PK inject at
-           ship (see the DEMO_ENABLED block) — the demo promotes to primary + on top. -->
-      <div class="cards">
-        <button class="card pri" id="pathConnect">
-          <div class="ct">Connect your project<span class="arw">&rarr;</span></div>
-          <div class="cc">A short guided setup — point Sorb at your own running app.</div>
+      <!-- Front door (Part 8): designer-default, invite-first. The stateful primary is
+           driven by the sorb.hasHandshake flag in applyIntroState():
+             · first run (flag unset)  → "Invite a developer" = solid-blaze primary,
+               "Paste an invite" = outline-blaze secondary (.card.sec.accent).
+             · after a handshake pasted → "Paste an invite" promotes to primary.
+           "Advanced setup" (Connect wizard) + "Try the live demo" stay demoted. When the
+           hosted demo injects at ship, the DEMO_ENABLED block promotes it above all. -->
+      <div class="cards" id="introCards">
+        <button class="card sec accent" id="pathPasteInvite">
+          <div class="ct">Paste an invite from your developer<span class="arw">&rarr;</span></div>
+          <div class="cc">Your dev sends one code. Paste it and you&rsquo;re connected — no servers, URLs, or keys.</div>
+        </button>
+        <button class="card pri" id="pathInviteDev">
+          <div class="ct">Invite a developer<span class="arw">&rarr;</span></div>
+          <div class="cc">Send your dev a short message. They run one command and send you an invite.</div>
+        </button>
+        <button class="card sec" id="pathAdvanced">
+          <div class="ct">Advanced setup<span class="arw">&rarr;</span></div>
+          <div class="cc">Enter the bridge, app, and key by hand. For technical users.</div>
         </button>
         <button class="card coming" id="pathDemo" disabled tabindex="-1" aria-disabled="true">
           <div class="ct">Try the live demo<span class="soon">Coming soon</span></div>
@@ -618,6 +670,42 @@
         <a href="https://metatoy.com/sorb/docs" target="_blank" rel="noopener">Docs</a>
         <a href="https://metatoy.com/sorb/beta" target="_blank" rel="noopener">Join the beta</a>
       </div>
+    </div>
+
+    <!-- ── PASTE-AN-INVITE FLOW (Part 8 · redeem a developer handshake) ──── -->
+    <div class="flow" id="pasteFlow">
+      <button class="flow-back" id="pasteBack">&larr; Back</button>
+      <div class="flow-h">Paste your invite</div>
+      <div class="flow-p">Paste the invite your developer sent. Sorb reads it and connects — you won&rsquo;t need to enter any servers, URLs, or keys.</div>
+
+      <textarea class="invite-ta" id="inviteInput" aria-label="Paste the invite your developer sent" placeholder="sorb://handshake/…   or   paste the code"></textarea>
+
+      <button class="redeem-cta" id="redeemBtn">Redeem invite</button>
+
+      <div class="receipt" id="redeemReceipt" data-state="empty" role="status" aria-live="polite" aria-atomic="true" style="margin-top:14px;"></div>
+
+      <div class="redeem-hint">Don&rsquo;t have an invite yet? Go back and choose &ldquo;Invite a developer&rdquo; to send your dev a one-line request.</div>
+    </div>
+
+    <!-- ── INVITE-A-DEVELOPER FLOW (Part 8 · copyable request message) ───── -->
+    <div class="flow" id="inviteFlow">
+      <button class="flow-back" id="inviteBack">&larr; Back</button>
+      <div class="flow-h">Invite a developer</div>
+      <div class="flow-p">Send this to whoever runs the app&rsquo;s code. They run one command and send you back an invite to paste here.</div>
+
+      <div class="msg-box" id="inviteMsg">Hey — I&rsquo;m using the Sorb plugin in Figma to preview our design tokens on the running app. To connect it, from the app&rsquo;s repo:
+
+<span class="step-n">1.</span> Install the bridge:  <code>npm i -g @sorb/juice</code>
+<span class="step-n">2.</span> Start it:  <code>sorb dev</code>
+<span class="step-n">3.</span> Make my invite:  <code>sorb handshake --copy</code>
+<span class="step-n">4.</span> Send me the code it prints — I&rsquo;ll paste it into the plugin. That&rsquo;s it.</div>
+
+      <button class="copy-cta" id="inviteCopyBtn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/><path d="M2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1H3a1 1 0 0 1-1-1z"/></svg>
+        <span class="copy-label">Copy message</span>
+      </button>
+
+      <div class="copy-hint">Once they send the invite back, choose &ldquo;Paste an invite&rdquo; on the home screen and drop it in.</div>
     </div>
 
     <!-- ── TABS (Tokens / Components / Settings) ─────────────────────────── -->
@@ -753,30 +841,37 @@
 
     <!-- ── SETTINGS VIEW ─────────────────────────────────────────────── -->
     <div id="view-settings" class="view">
-      <p class="settings-note">Saved locally between sessions.</p>
+      <p class="settings-note">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
 
-      <label for="origin">Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
-      <div class="set-field-row">
-        <input id="origin" placeholder="http://localhost:7777" />
-        <button type="button" class="set-test-btn" id="originTest" aria-label="Test bridge origin connection">Test</button>
-      </div>
-      <span class="set-result" id="originResult" role="status" aria-live="polite"></span>
+      <!-- Part 8 · the technical fields collapse into an "Advanced" disclosure (closed by
+           default). Input ids are unchanged, so all persistence / activeKey() wiring holds. -->
+      <details class="adv" id="advSettings">
+        <summary class="adv-sum">Advanced setup <span class="adv-hint">— enter the bridge, app, and key by hand</span></summary>
+        <div class="adv-body">
+          <label for="origin">Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
+          <div class="set-field-row">
+            <input id="origin" placeholder="http://localhost:7777" />
+            <button type="button" class="set-test-btn" id="originTest" aria-label="Test bridge origin connection">Test</button>
+          </div>
+          <span class="set-result" id="originResult" role="status" aria-live="polite"></span>
 
-      <label for="appUrl">App URL <span class="hint">(page to open with the preview)</span></label>
-      <div class="set-field-row">
-        <input id="appUrl" placeholder="http://localhost:5173" />
-        <button type="button" class="set-test-btn" id="appTest" aria-label="Test app URL reachability">Test</button>
-      </div>
-      <span class="set-result" id="appResult" role="status" aria-live="polite"></span>
+          <label for="appUrl">App URL <span class="hint">(page to open with the preview)</span></label>
+          <div class="set-field-row">
+            <input id="appUrl" placeholder="http://localhost:5173" />
+            <button type="button" class="set-test-btn" id="appTest" aria-label="Test app URL reachability">Test</button>
+          </div>
+          <span class="set-result" id="appResult" role="status" aria-live="polite"></span>
 
-      <label for="storybookUrl">Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
-      <input id="storybookUrl" placeholder="http://localhost:6006" />
+          <label for="storybookUrl">Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
+          <input id="storybookUrl" placeholder="http://localhost:6006" />
 
-      <label for="githubUrl">GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
-      <input id="githubUrl" placeholder="https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json" />
+          <label for="githubUrl">GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
+          <input id="githubUrl" placeholder="https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json" />
 
-      <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
-      <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
+          <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
+          <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
+        </div>
+      </details>
 
       <label class="sb-check" style="margin-top:14px;">
         <input type="checkbox" id="labelToggle" checked />
@@ -848,6 +943,9 @@
       LS.lastComponentCount = 'sorb.lastComponentCount';
       LS.lastTokenIds       = 'sorb.lastTokenIds';
       LS.lastTokenSnapshot  = 'sorb.lastTokenSnapshot';
+      // Part 8 · handshake — set once a developer invite has been pasted; drives the
+      // stateful intro primary (unset → "Invite a developer" leads; set → "Paste" leads).
+      LS.hasHandshake       = 'sorb.hasHandshake';
       function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
       function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
 
@@ -1093,40 +1191,178 @@
       $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
       $('ghReload').onclick = function() { $('reload').click(); };
 
-      // ── two-path intro (first-open front door) + re-openable help ────────
-      function showIntro() {
-        $('introScreen').classList.add('show');
-        $('tabs').hidden = true;
+      // ── designer-default intro (Part 8) + redeem/invite flows + re-openable help ──
+      function escHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function hideAllScreens() {
+        $('introScreen').classList.remove('show');
+        $('pasteFlow').classList.remove('show');
+        $('inviteFlow').classList.remove('show');
+      }
+      function hideAllViews() {
         $('view-tokens').style.display = 'none';
         $('view-storybook').style.display = 'none';
         $('view-settings').style.display = 'none';
       }
+
+      // Stateful primary: unset flag → "Invite a developer" leads (solid blaze, on top);
+      // set → "Paste an invite" leads. When the hosted demo is live the DEMO_ENABLED block
+      // owns the ordering, so this becomes a no-op.
+      function applyIntroState() {
+        if (typeof DEMO_ENABLED !== 'undefined' && DEMO_ENABLED) return;
+        var paste = $('pathPasteInvite'), invite = $('pathInviteDev');
+        if (!paste || !invite) return;
+        if (lsGet(LS.hasHandshake) === 'true') {
+          paste.className  = 'card pri';
+          invite.className = 'card sec accent';
+          if (paste.parentNode) paste.parentNode.insertBefore(paste, invite);   // paste on top
+        } else {
+          invite.className = 'card pri';
+          paste.className  = 'card sec accent';
+          if (invite.parentNode) invite.parentNode.insertBefore(invite, paste); // invite on top
+        }
+      }
+
+      function showIntro() {
+        hideAllScreens();
+        applyIntroState();
+        $('introScreen').classList.add('show');
+        $('tabs').hidden = true;
+        hideAllViews();
+      }
+      function showPasteFlow() {
+        hideAllScreens();
+        $('tabs').hidden = true;
+        hideAllViews();
+        var r = $('redeemReceipt'); r.setAttribute('data-state', 'empty'); r.innerHTML = '';
+        $('pasteFlow').classList.add('show');
+        try { $('inviteInput').focus(); } catch (e) {}
+      }
+      function showInviteFlow() {
+        hideAllScreens();
+        $('tabs').hidden = true;
+        hideAllViews();
+        $('inviteFlow').classList.add('show');
+      }
       function showMain() {
-        $('introScreen').classList.remove('show');
+        hideAllScreens();
         $('tabs').hidden = false;
         showView('tokens');
         updateCta();
       }
       $('helpBtn').onclick = showIntro;
-      $('pathConnect').onclick = function() {
+
+      $('pathPasteInvite').onclick = showPasteFlow;
+      $('pathInviteDev').onclick   = showInviteFlow;
+      $('pasteBack').onclick  = showIntro;
+      $('inviteBack').onclick = showIntro;
+
+      // "Advanced setup" — the existing guided Connect wizard (technical users).
+      $('pathAdvanced').onclick = function() {
         lsSet(LS.demo, '');            // leaving demo mode; onboarded is set on finish/skip, not here
         showMain();                    // reveal the app behind the scrim (intro → step 1 continuity)
         openConnectOverlay(1);
       };
+
+      // ── decode a self-contained handshake token (part8-p0-design §1.2) ───
+      // Accepts a full `sorb://handshake/<blob>` deep link OR the bare base64url blob.
+      // Returns { ok:true, token } or { ok:false } (not-base64url / not-JSON).
+      var HS_PREFIX = 'sorb://handshake/';
+      function decodeHandshake(raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (s.indexOf(HS_PREFIX) === 0) s = s.slice(HS_PREFIX.length).trim();
+        if (!s) return { ok: false };
+        var b = s.replace(/-/g, '+').replace(/_/g, '/');   // base64url → base64
+        while (b.length % 4) b += '=';                      // restore padding
+        var json;
+        try { json = atob(b); } catch (e) { return { ok: false }; }
+        var obj;
+        try { obj = JSON.parse(json); } catch (e) { return { ok: false }; }
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false };
+        return { ok: true, token: obj };
+      }
+
+      function fmtExpDate(expSeconds) {
+        try {
+          return new Date(Number(expSeconds) * 1000)
+            .toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch (e) { return 'an earlier date'; }
+      }
+      function redeemError(html) {
+        var el = $('redeemReceipt');
+        el.setAttribute('data-state', 'err');
+        el.innerHTML = html;
+      }
+
+      // Redeem: decode → validate (v / required / exp) → auto-fill all five (clone of the
+      // demo-mode auto-config block: write LS.* + input .value) → connect + load.
+      $('redeemBtn').onclick = function() {
+        var dec = decodeHandshake($('inviteInput').value);
+        if (!dec.ok) return redeemError("That doesn&rsquo;t look like a Sorb invite. Paste the whole code your developer sent.");
+        var t = dec.token;
+        if (t.v !== 1) return redeemError("This invite was made by a newer Sorb. Update the plugin, or ask for a fresh invite.");
+        if (!t.origin || !t.appUrl) return redeemError("This invite is incomplete — ask your developer to re-run <code>sorb handshake</code>.");
+        if (t.exp && (Math.floor(Date.now() / 1000) > Number(t.exp))) {
+          return redeemError("This invite expired on " + escHtml(fmtExpDate(t.exp)) + " — ask your developer to send a new one.");
+        }
+        // success — persist the five fields to LS + the (Advanced) inputs
+        var pk = (t.pk == null ? '' : String(t.pk)).trim();
+        lsSet(LS.origin, t.origin);  $('origin').value      = t.origin;
+        lsSet(LS.app,    t.appUrl);  $('appUrl').value      = t.appUrl;
+        lsSet(LS.gh,     t.gh || ''); $('githubUrl').value  = t.gh || '';
+        lsSet(LS.apiKey, pk);        $('apiKey').value      = pk;   // → activeKey() on the non-demo branch
+        lsSet(LS.demo, '');                                          // real bridge, not the demo pk
+        lsSet(LS.hasHandshake, 'true');
+        var ns = t.namespace ? String(t.namespace) : 'your app';
+        var receipt = $('redeemReceipt');
+        receipt.setAttribute('data-state', 'ok');
+        receipt.innerHTML = 'Connected to <b>' + escHtml(ns) + '</b> — you&rsquo;re set. Opening your tokens&hellip;';
+        connStartPoll();
+        setTimeout(function() {
+          finishOnboarding('handshake');                            // sets onb + path, showMain()
+          try { setStatus('Connected to <b>' + escHtml(ns) + '</b> — you&rsquo;re set.'); } catch (e) {}
+          try { $('committed').click(); } catch (e) {}              // load committed tokens from the bridge
+        }, 700);
+      };
+
+      // ── "Invite a developer" — copyable request message ──────────────────
+      var INVITE_MSG = [
+        "Hey — I'm using the Sorb plugin in Figma to preview our design tokens on the running app. To connect it, from the app's repo:",
+        '',
+        '1. Install the bridge:  npm i -g @sorb/juice',
+        '2. Start it:  sorb dev',
+        '3. Make my invite:  sorb handshake --copy',
+        "4. Send me the code it prints — I'll paste it into the plugin. That's it."
+      ].join('\n');
+      $('inviteCopyBtn').onclick = function() {
+        var label = $('inviteCopyBtn').querySelector('.copy-label');
+        copyReceipt(INVITE_MSG).then(function(ok) {                  // reuses clipboard + #copybuf fallback
+          if (label) label.textContent = ok ? 'Copied!' : 'Copy failed';
+          setTimeout(function() { if (label) label.textContent = 'Copy message'; }, 1800);
+        });
+      };
+
       // "Try the live demo" — hosted demo path (U4). Lights up only when a read-only demo
       // key (DEMO_PK, from Keychain `sorb-publish-only`) AND the deployed demo-app origin
       // (DEMO_APP) are both set; both are injected at ship/deploy time, never committed.
       var DEMO_ENABLED = DEMO_PK !== '' && DEMO_APP !== '';
       if (DEMO_ENABLED) {
-        // Demo is live → it becomes the confident solid-blaze primary (moved on top),
-        // Connect demotes to the clean secondary card. Inverse of the blank-demo default.
-        var demoCard = $('pathDemo'), connectCard = $('pathConnect');
+        // Demo is live → it becomes the confident solid-blaze primary (moved on top); the
+        // handshake cards demote to clean secondaries. applyIntroState() no-ops in this mode.
+        var demoCard = $('pathDemo');
         demoCard.disabled = false;
         demoCard.removeAttribute('tabindex');
         demoCard.removeAttribute('aria-disabled');
         demoCard.className = 'card pri';
-        connectCard.className = 'card sec';
-        if (connectCard.parentNode) connectCard.parentNode.insertBefore(demoCard, connectCard);
+        var pasteCard = $('pathPasteInvite'), inviteCard = $('pathInviteDev');
+        if (pasteCard)  pasteCard.className  = 'card sec';
+        if (inviteCard) inviteCard.className = 'card sec';
+        var cardsWrap = $('introCards');
+        if (cardsWrap) cardsWrap.insertBefore(demoCard, cardsWrap.firstChild);
         var demoSoon = demoCard.querySelector('.soon');
         if (demoSoon) demoSoon.replaceWith(Object.assign(document.createElement('span'), { className: 'arw', innerHTML: '&rarr;' }));
         $('pathDemo').onclick = function() {
