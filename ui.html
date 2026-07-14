@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <style>
@@ -18,6 +18,23 @@
       * { box-sizing: border-box; }
       body { margin:0; color:var(--ink); background:var(--snow); overflow-x:hidden;
         -webkit-font-smoothing:antialiased; }
+
+      /* ── keyboard focus ring (a11y · GFP RC1 B6) ─────────────────────────
+         A single blaze ring, offset onto the light surround so it stays
+         visible even on blaze-filled controls (CTA / demo card / dark chips).
+         Mouse clicks stay ring-free via :focus-visible. */
+      :focus-visible {
+        outline: 2px solid var(--blaze);
+        outline-offset: 2px;
+      }
+      /* tabs sit in a tight strip — pull the ring inward so it isn't clipped */
+      .tab:focus-visible { outline-offset: -2px; }
+      /* form fields also warm the border so the field itself reads as active */
+      input:focus-visible, textarea:focus-visible, select:focus-visible {
+        outline: 2px solid var(--blaze);
+        outline-offset: 1px;
+        border-color: var(--blaze);
+      }
 
       /* ── header (persistent) ─────────────────────────────────────────── */
       .hdr { display:flex; align-items:center; gap:10px; padding:9px 12px;
@@ -554,13 +571,13 @@
         <label>Tokens <span class="hint">(from Figma Variables — editable)</span></label>
         <div class="tk-head-right">
           <span class="hint" style="font-weight:400;cursor:pointer;">
-            <input type="checkbox" id="autoSync" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
+            <input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
           </span>
-          <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+          <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables" aria-label="Reload tokens from Figma Variables">
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
           </button>
-          <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
+          <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor" aria-label="Toggle raw JSON editor">
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
           </button>
         </div>
       </div>
@@ -602,7 +619,7 @@
       </div>
 
       <div class="tk-rawwrap" id="tkRawWrap" hidden>
-        <textarea id="tokens">{}</textarea>
+        <textarea id="tokens" aria-label="Raw tokens JSON editor">{}</textarea>
 
         <!-- hidden action buttons — click handlers delegated from toolbar -->
         <div style="display:none;">
@@ -614,7 +631,7 @@
         </div>
       </div>
 
-      <div class="status" id="status"></div>
+      <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
 
       <div class="foot">
         <button class="cta" id="cta">
@@ -634,8 +651,8 @@
         <label style="margin:0;">Components <span class="hint">(insert captured Storybook stories)</span></label>
         <div style="display:flex;gap:6px;align-items:center;flex:0 0 auto;">
           <button class="secondary" id="tb-preview-storybook" title="Preview current tokens in Storybook" style="flex:0 0 auto;padding:7px 10px;font-size:11px;">Preview</button>
-          <button class="secondary sb-refresh" id="loadStories" title="Refresh story list">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+          <button class="secondary sb-refresh" id="loadStories" title="Refresh story list" aria-label="Refresh story list">
+            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
           </button>
         </div>
       </div>
@@ -646,7 +663,7 @@
         <table class="sb-table" id="sbTable">
           <thead>
             <tr>
-              <th class="sb-col-check"><input type="checkbox" id="sbCheckAll" title="Select all visible" /></th>
+              <th class="sb-col-check"><input type="checkbox" id="sbCheckAll" title="Select all visible" aria-label="Select all visible stories" /></th>
               <th class="sb-col-prev"></th>
               <th class="sb-col-comp" id="sbThComp">Component</th>
               <th class="sb-col-story">Story</th>
@@ -665,34 +682,34 @@
 
       <div class="sb-progress" id="sbProgress" hidden><div class="sb-progress-bar" id="sbProgressBar"></div></div>
 
-      <div class="status" id="status-sb"></div>
+      <div class="status" id="status-sb" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
 
     <!-- ── SETTINGS VIEW ─────────────────────────────────────────────── -->
     <div id="view-settings" class="view">
       <p class="settings-note">Saved locally between sessions.</p>
 
-      <label>Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
+      <label for="origin">Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
       <div class="set-field-row">
         <input id="origin" placeholder="http://localhost:7777" />
-        <button type="button" class="set-test-btn" id="originTest">Test</button>
+        <button type="button" class="set-test-btn" id="originTest" aria-label="Test bridge origin connection">Test</button>
       </div>
-      <span class="set-result" id="originResult"></span>
+      <span class="set-result" id="originResult" role="status" aria-live="polite"></span>
 
-      <label>App URL <span class="hint">(page to open with the preview)</span></label>
+      <label for="appUrl">App URL <span class="hint">(page to open with the preview)</span></label>
       <div class="set-field-row">
         <input id="appUrl" placeholder="http://localhost:5173" />
-        <button type="button" class="set-test-btn" id="appTest">Test</button>
+        <button type="button" class="set-test-btn" id="appTest" aria-label="Test app URL reachability">Test</button>
       </div>
-      <span class="set-result" id="appResult"></span>
+      <span class="set-result" id="appResult" role="status" aria-live="polite"></span>
 
-      <label>Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
+      <label for="storybookUrl">Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
       <input id="storybookUrl" placeholder="http://localhost:6006" />
 
-      <label>GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
+      <label for="githubUrl">GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
       <input id="githubUrl" placeholder="https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json" />
 
-      <label>API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
+      <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
       <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
 
       <label class="sb-check" style="margin-top:14px;">
@@ -1220,6 +1237,7 @@
         hdr.innerHTML = '<span>Review changes <span class="n">(' + changed.length + ' changed)</span></span>';
         var closeBtn = document.createElement('button');
         closeBtn.className = 'diff-close'; closeBtn.textContent = '✕';
+        closeBtn.setAttribute('aria-label', 'Close review');
         closeBtn.onclick = teardownDiffDrawer;
         hdr.appendChild(closeBtn);
         drawer.appendChild(hdr);
@@ -1262,6 +1280,7 @@
         var cl = document.createElement('div'); cl.className = 'diff-commit-label'; cl.textContent = 'Commit message';
         commitArea.appendChild(cl);
         var msgTa = document.createElement('textarea'); msgTa.id = 'diffCommitMsg';
+        msgTa.setAttribute('aria-label', 'Commit message');
         msgTa.value = buildCommitMessage(changed, committed, groupKeys);
         commitArea.appendChild(msgTa);
         drawer.appendChild(commitArea);
@@ -1530,6 +1549,7 @@
           var uses = document.createElement('button');
           uses.className = 'tk-uses';
           uses.title = 'Show components bound to this token';
+          uses.setAttribute('aria-label', 'Show components bound to ' + name);
           uses.textContent = '◈';
           uses.onclick = (function(rowName, btn, rowEl) {
             return function() { toggleUsages(rowName, btn, rowEl); };
@@ -1541,6 +1561,7 @@
           var tdVal = document.createElement('td');
           var input = document.createElement('input');
           input.className = 'tk-val';
+          input.setAttribute('aria-label', name + ' value');
           input.value = tokenSet[name];
           input.oninput = (function(rowName, iconCell, inputEl) {
             return function() {
@@ -1565,6 +1586,7 @@
           var del = document.createElement('button');
           del.className = 'tk-del';
           del.title = 'Remove from working set';
+          del.setAttribute('aria-label', 'Remove ' + name + ' from working set');
           del.textContent = '✕'; // ✕
           del.onclick = (function(rowName) {
             return function() { delete tokenSet[rowName]; renderTokenTable(); onTokenEdit(); };
@@ -2247,6 +2269,7 @@
           // checkbox
           var tdc = document.createElement('td'); tdc.className = 'sb-col-check';
           var cb = document.createElement('input'); cb.type = 'checkbox';
+          cb.setAttribute('aria-label', 'Select ' + ((r.component ? r.component + ' / ' : '') + r.story));
           cb.checked = !!sbSelected[r.storyId];
           cb.onchange = function() {
             if (cb.checked) sbSelected[r.storyId] = true; else delete sbSelected[r.storyId];
