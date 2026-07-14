@@ -78,6 +78,13 @@
       .card.pri .cc { color:#FCE6D9; }
       .card.sec { background:var(--surface); border-color:var(--line); color:var(--ink); }
       .card.sec .cc { color:var(--soft); }
+      /* C1 · dashed "COMING SOON" strip — muted, deliberate (not a washed-out CTA).
+         Auto-promotes to .card.pri once the hosted demo is injected at ship. */
+      .card.coming { background:var(--surface-2); border:1px dashed var(--line); }
+      .card.coming .ct { color:var(--soft); font-weight:600; }
+      .card.coming .cc { color:var(--taupe); }
+      .card.coming .soon { color:var(--taupe); }
+      .card.coming[disabled] { opacity:1; cursor:default; }
       .card[disabled] { opacity:.55; cursor:not-allowed; }
       .card .arw { margin-left:auto; opacity:.85; font-size:14px; }
       .card .soon { margin-left:auto; font-size:9px; font-family:var(--mono); text-transform:uppercase;
@@ -126,6 +133,34 @@
       .status a { color: var(--blaze-ink); }
       .status.err { color: var(--err); }
       .hint { color: var(--soft); font-weight: 400; font-size: 11px; }
+
+      /* ── C4 · status receipt band ────────────────────────────────────────
+         The tokens-view status becomes a bordered receipt with a leading state
+         dot. Empty → display:none (collapses to nothing). Red=error, green=ok,
+         neutral otherwise. */
+      .receipt {
+        display: flex; align-items: flex-start; gap: 8px;
+        margin-top: 10px; padding: 8px 10px;
+        border: 1px solid var(--line); border-radius: 7px;
+        background: var(--surface); color: var(--ink-2);
+        font-size: 11px; line-height: 1.5;
+      }
+      .receipt::before {
+        content: ''; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
+        margin-top: 3px; background: var(--taupe);
+      }
+      .receipt[data-state="empty"] { display: none; }
+      .receipt[data-state="neutral"]::before { background: var(--taupe); }
+      .receipt[data-state="ok"] {
+        border-color: #BFE0CD; background: var(--ok-bg); color: var(--ok);
+      }
+      .receipt[data-state="ok"]::before { background: var(--ok); box-shadow: 0 0 4px rgba(46,122,78,.5); }
+      .receipt[data-state="err"] {
+        border-color: #EBC3BB; background: rgba(192,52,29,.06); color: var(--err);
+      }
+      .receipt[data-state="err"]::before { background: var(--err); }
+      .receipt a { color: var(--blaze-ink); }
+      .receipt b { font-weight: 650; }
 
       /* ── storybook table view ──────────────────────────────────────── */
       .sb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -327,6 +362,16 @@
         min-width: 4px; vertical-align: middle;
       }
 
+      /* ── C2 · per-group "Show all" expander row ───────────────────────── */
+      .tk-showall-row td { padding: 0; border-bottom: 1px solid var(--line-2); }
+      .tk-showall {
+        width: 100%; text-align: left; padding: 6px 8px 6px 38px;
+        background: var(--surface-2); border: 0; border-radius: 0;
+        color: var(--blaze-ink); font-size: 10.5px; font-weight: 600;
+        cursor: pointer; font-family: inherit;
+      }
+      .tk-showall:hover { background: var(--line-2); }
+
       /* ── "Used by N" blast-radius badge (U3 · P2) ────────────────────── */
       .tk-name-cell { display: flex; align-items: center; gap: 6px; }
       .tk-name-cell .tk-name { flex: 1 1 auto; }
@@ -493,7 +538,16 @@
 
       /* ── U3 · F13 warm empty-state kit ───────────────────────────────── */
       .empty-state { text-align: center; padding: 40px 16px; }
-      .empty-state .es-icon { font-size: 28px; margin-bottom: 10px; color: var(--taupe); }
+      .empty-state .es-icon { margin-bottom: 12px; }
+      /* C5 · soft blaze-tinted circle holding the mark — one warm icon used across
+         every empty / error / filter / disconnected state (replaces the thin
+         unicode glyphs ◎ ◌ ⊘ ⬚). */
+      .es-mark {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 52px; height: 52px; border-radius: 50%;
+        background: var(--blaze-bg); color: var(--blaze);
+      }
+      .es-mark svg { display: block; }
       .empty-state .es-head { font-size: 13px; font-weight: 650; color: var(--ink-2); margin-bottom: 6px; }
       .empty-state .es-body { font-size: 11px; line-height: 1.5; color: var(--soft); margin-bottom: 14px; }
       .empty-state .es-body code { font-family: var(--mono); font-size: 10.5px; }
@@ -519,15 +573,19 @@
   </head>
   <body>
 
-    <!-- ── HEADER (always visible) ───────────────────────────────────── -->
+    <!-- ── HEADER (always visible) ───────────────────────────────────────
+         Header de-dupe (C1): the Figma window bar already reads "Sorb", so the
+         in-content wordmark is dropped. The connection/verify status pill leads
+         as the primary element; the small orange mark is a quiet left anchor and
+         the ? help sits at the right. Applies across every view. -->
     <div class="hdr">
-      <div class="mark"><div class="glyph"></div><div class="wm">Sorb</div></div>
-      <div class="sp"></div>
-      <div id="teammateIndicator" class="teammate-indicator" style="display:none"></div>
+      <div class="mark"><div class="glyph"></div></div>
       <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">—</span>
       </div>
+      <div class="sp"></div>
+      <div id="teammateIndicator" class="teammate-indicator" style="display:none"></div>
       <button class="qm" id="helpBtn" title="What is Sorb?" aria-label="What is Sorb?">?</button>
     </div>
 
@@ -541,14 +599,18 @@
         <div class="feat"><div class="fl">See it live</div><div class="fc">Watch it land in the running app.</div></div>
         <div class="feat"><div class="fl">Verify</div><div class="fc">Confirm it before you merge.</div></div>
       </div>
+      <!-- Front door (C1): Connect is the confident solid-blaze primary while the
+           hosted demo is unavailable; the demo is a quiet dashed COMING-SOON strip
+           (disabled, not a tab stop). Both invert once DEMO_APP + DEMO_PK inject at
+           ship (see the DEMO_ENABLED block) — the demo promotes to primary + on top. -->
       <div class="cards">
-        <button class="card pri" id="pathDemo" disabled>
-          <div class="ct">Try the live demo<span class="soon">Soon</span></div>
-          <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
-        </button>
-        <button class="card sec" id="pathConnect">
+        <button class="card pri" id="pathConnect">
           <div class="ct">Connect your project<span class="arw">&rarr;</span></div>
           <div class="cc">A short guided setup — point Sorb at your own running app.</div>
+        </button>
+        <button class="card coming" id="pathDemo" disabled tabindex="-1" aria-disabled="true">
+          <div class="ct">Try the live demo<span class="soon">Coming soon</span></div>
+          <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
         </button>
       </div>
       <div class="links">
@@ -631,14 +693,18 @@
         </div>
       </div>
 
-      <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
+      <!-- C4 · receipt band — bordered result line with a state dot (red=error,
+           green=success, neutral otherwise). Collapses to nothing when empty.
+           Keeps the B6 role="status" + aria-live so announcements don't regress. -->
+      <div class="receipt" id="status" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
 
       <div class="foot">
         <button class="cta" id="cta">
           <span id="ctaLabel">Load from App</span><span class="n" id="ctaCount" hidden></span>
         </button>
+        <!-- C3 · the redundant "Load from App" ghost is dropped — the giant foot
+             CTA above is the single load path. Sync Variables + Open PR remain. -->
         <div class="sec-actions">
-          <button class="ghost" id="ghLoad">Load from App</button>
           <button class="ghost" id="ghSync">Sync Variables</button>
           <button class="ghost off" id="ghPr" disabled>Open PR</button>
         </div>
@@ -753,9 +819,17 @@
       $('tb-nav-settings').onclick  = function() { showView('settings'); };
 
       // ── status helpers (tokens view / storybook view) ──────────────────
+      // C4 · the tokens status is a receipt band. State dot: red for error, green
+      // for a success receipt (preview pushed/created, synced, loaded, ✓), neutral
+      // otherwise; empty message collapses the band entirely.
+      function statusIsSuccess(html) {
+        return /✓|\bcreated\b|\bpushed\b|\bsynced\b|\bupdated\b|\bloaded\b|\bready\b/i.test(String(html));
+      }
       function setStatus(html, isErr) {
         var el = $('status');
-        el.className = 'status' + (isErr ? ' err' : '');
+        var empty = !html || String(html).trim() === '';
+        var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
+        el.setAttribute('data-state', state);
         el.innerHTML = html;
       }
       function setSbStatus(html, isErr) {
@@ -888,6 +962,8 @@
       var tokenSet = {};            // { name: value } working set — both views derive from this
       var tokenFilters = {};        // active group filters (empty = all visible)
       var tokenFilterOpen = false;  // [Filter] chip expanded?
+      var typeGroupExpanded = {};   // C2 — per type-group "Show all" expansion state
+      var TYPE_CAP = 10;            // C2 — rows shown per type group before "Show all"
       var rawOpen = false;          // </> raw editor visible?
       var livePreviewId = null;     // active live-preview session id (string|null)
       var pushTimer = null;         // debounce handle for live PUT
@@ -1013,7 +1089,6 @@
         }
         if (t) $(t).click();
       };
-      $('ghLoad').onclick   = function() { $('committed').click(); };
       $('ghSync').onclick   = function() { $('syncvars').click(); };
       $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
       $('ghReload').onclick = function() { $('reload').click(); };
@@ -1043,8 +1118,16 @@
       // (DEMO_APP) are both set; both are injected at ship/deploy time, never committed.
       var DEMO_ENABLED = DEMO_PK !== '' && DEMO_APP !== '';
       if (DEMO_ENABLED) {
-        $('pathDemo').disabled = false;
-        var demoSoon = $('pathDemo').querySelector('.soon');
+        // Demo is live → it becomes the confident solid-blaze primary (moved on top),
+        // Connect demotes to the clean secondary card. Inverse of the blank-demo default.
+        var demoCard = $('pathDemo'), connectCard = $('pathConnect');
+        demoCard.disabled = false;
+        demoCard.removeAttribute('tabindex');
+        demoCard.removeAttribute('aria-disabled');
+        demoCard.className = 'card pri';
+        connectCard.className = 'card sec';
+        if (connectCard.parentNode) connectCard.parentNode.insertBefore(demoCard, connectCard);
+        var demoSoon = demoCard.querySelector('.soon');
         if (demoSoon) demoSoon.replaceWith(Object.assign(document.createElement('span'), { className: 'arw', innerHTML: '&rarr;' }));
         $('pathDemo').onclick = function() {
           lsSet(LS.onb, 'true'); lsSet(LS.onbPath, 'demo'); lsSet(LS.demo, 'true');
@@ -1381,6 +1464,16 @@
         return 'STRING';
       }
 
+      // C2 — collapse inferType into the three type-group buckets used when no
+      // resolved tier map exists: COLOR · NUMBER (dimensions/floats) · TEXT
+      // (strings + booleans).
+      function typeGroupOf(v) {
+        var t = inferType(v);
+        if (t === 'COLOR') return 'COLOR';
+        if (t === 'FLOAT') return 'NUMBER';
+        return 'TEXT';
+      }
+
       // §2.2 — smart sub-group for the filter chips.
       function groupOf(name) {
         var p = String(name).split('-');
@@ -1452,11 +1545,23 @@
           + '</span>';
       }
 
+      // C5 — the single warm state mark: a soft blaze-tinted circle holding the
+      // Sorb bullseye. One deliberate icon for every empty/error/filter/disconnected
+      // state, replacing the thin unicode glyphs.
+      var STATE_ICON_HTML =
+        '<span class="es-mark" aria-hidden="true">'
+        + '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'
+        + '<circle cx="12" cy="12" r="8"></circle>'
+        + '<circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"></circle>'
+        + '</svg></span>';
+
       // F13 — warm empty-state builder. `body` is HTML; `ctaLabel`/`ctaFn` optional.
+      // The leading glyph arg is retained for call-site compatibility but the icon
+      // is now always the warm STATE_ICON_HTML (C5).
       function buildEmptyState(icon, head, body, ctaLabel, ctaFn) {
         var d = document.createElement('div');
         d.className = 'empty-state';
-        d.innerHTML = '<div class="es-icon">' + icon + '</div>'
+        d.innerHTML = '<div class="es-icon">' + STATE_ICON_HTML + '</div>'
           + '<div class="es-head">' + tkEscape(head) + '</div>'
           + '<div class="es-body">' + body + '</div>';
         if (ctaLabel) {
@@ -1504,31 +1609,21 @@
                 "Sorb can't reach <code>" + org + "</code>. Start <code>sorb dev</code>, then retry.",
                 'Retry', function() { connCheck(); $('committed').click(); }));
             } else {
-              // configured, empty → Load
+              // configured, empty → C3: ONE load path. The single primary CTA is the
+              // foot "Load from App" button; the centre CTA is dropped and the copy
+              // points to it (the redundant ghost is removed too).
               tdE.appendChild(buildEmptyState('◎', 'No tokens loaded',
-                'Load your tokens from the running app to get started.',
-                'Load tokens', function() { $('committed').click(); }));
+                'Use <b>Load from App</b> below to pull your tokens and get started.',
+                null, null));
             }
           }
           trE.appendChild(tdE); body.appendChild(trE);
           return;
         }
 
-        var tierCounts = {};
-        names.forEach(function(n) { var t = tierOf(n); tierCounts[t] = (tierCounts[t] || 0) + 1; });
-        var lastTier = null;
-
-        names.forEach(function(name) {
-          var t = tierOf(name);
-          if (t !== lastTier) {
-            var htr = document.createElement('tr');
-            htr.className = 'tk-tier-head';
-            var label = t === '—' ? 'Other' : (t.charAt(0).toUpperCase() + t.slice(1));
-            htr.innerHTML = '<td colspan="4"><span>' + label + '</span>'
-              + '<span class="tk-tier-badge">' + tierCounts[t] + '</span></td>';
-            body.appendChild(htr);
-            lastTier = t;
-          }
+        // Build one token <tr> (icon · name+uses · value · delete + hovercard).
+        // Extracted so both the tier-grouped and type-grouped paths share it.
+        function buildRow(name) {
           var tr = document.createElement('tr');
 
           var tdIcon = document.createElement('td');
@@ -1593,14 +1688,69 @@
           })(name);
           tdAct.appendChild(del); tr.appendChild(tdAct);
 
-          body.appendChild(tr);
-
           // provenance hovercard (U3 · F5)
           tr.addEventListener('mouseover', (function(rowName, rowTr) {
             return function() { showHovercard(rowTr, rowName); };
           })(name, tr));
           tr.addEventListener('mouseout', hideHovercard);
-        });
+          return tr;
+        }
+
+        function emitGroupHeader(label, count) {
+          var htr = document.createElement('tr');
+          htr.className = 'tk-tier-head';
+          htr.innerHTML = '<td colspan="4"><span>' + tkEscape(label) + '</span>'
+            + '<span class="tk-tier-badge">' + count + '</span></td>';
+          body.appendChild(htr);
+        }
+
+        // Grouping (C2). A real resolved tier map still wins (unchanged behavior).
+        // But in the common Load-from-App path there's no resolved map — every row
+        // would otherwise collapse into one "Other" bucket — so fall back to inferred
+        // TYPE groups (COLOR / NUMBER / TEXT). Each type group is capped at the first
+        // TYPE_CAP rows with a "Show all (N) →" expander, so a large color set can't
+        // push the NUMBER/TEXT groups off-screen.
+        var hasTier = names.some(function(n) { return tierOf(n) !== '—'; });
+
+        if (hasTier) {
+          var tierCounts = {};
+          names.forEach(function(n) { var t = tierOf(n); tierCounts[t] = (tierCounts[t] || 0) + 1; });
+          var lastTier = null;
+          names.forEach(function(name) {
+            var t = tierOf(name);
+            if (t !== lastTier) {
+              var label = t === '—' ? 'Other' : (t.charAt(0).toUpperCase() + t.slice(1));
+              emitGroupHeader(label, tierCounts[t]);
+              lastTier = t;
+            }
+            body.appendChild(buildRow(name));
+          });
+        } else {
+          var TYPE_ORDER = ['COLOR', 'NUMBER', 'TEXT'];
+          var buckets = { COLOR: [], NUMBER: [], TEXT: [] };
+          names.forEach(function(n) { buckets[typeGroupOf(tokenSet[n])].push(n); });
+          TYPE_ORDER.forEach(function(g) {
+            var list = buckets[g];
+            if (!list.length) return;
+            emitGroupHeader(g, list.length);
+            var expanded = !!typeGroupExpanded[g];
+            var shown = expanded ? list.length : Math.min(list.length, TYPE_CAP);
+            for (var i = 0; i < shown; i++) body.appendChild(buildRow(list[i]));
+            if (list.length > TYPE_CAP && !expanded) {
+              var mtr = document.createElement('tr');
+              mtr.className = 'tk-showall-row';
+              var mtd = document.createElement('td'); mtd.colSpan = 4;
+              var mbtn = document.createElement('button');
+              mbtn.type = 'button'; mbtn.className = 'tk-showall';
+              mbtn.textContent = 'Show all ' + list.length + ' →';
+              mbtn.setAttribute('aria-label', 'Show all ' + list.length + ' ' + g + ' tokens');
+              mbtn.onclick = (function(grp) {
+                return function() { typeGroupExpanded[grp] = true; renderTokenTable(); };
+              })(g);
+              mtd.appendChild(mbtn); mtr.appendChild(mtd); body.appendChild(mtr);
+            }
+          });
+        }
       }
 
       // ── token-provenance hovercard (U3 · F5) ─────────────────────────────
