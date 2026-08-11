@@ -101,6 +101,17 @@
       .card .arw { margin-left:auto; opacity:.85; font-size:14px; }
       .card .soon { margin-left:auto; font-size:9px; font-family:var(--mono); text-transform:uppercase;
         letter-spacing:.06em; opacity:.95; }
+      /* ── local-bridge discovery banner (intro) ────────────────────────── */
+      .discover { display:flex; align-items:center; gap:8px; margin-top:14px; padding:9px 12px;
+        border:1px solid var(--blaze); border-radius:10px; background:var(--blaze-bg);
+        font-size:12px; }
+      .disc-dot { width:8px; height:8px; border-radius:50%; background:var(--blaze); flex:none;
+        animation: discPulse 1.6s ease-in-out infinite; }
+      @keyframes discPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+      .disc-text { flex:1; min-width:0; }
+      .disc-btn { font:inherit; font-size:12px; font-weight:600; padding:5px 12px; border-radius:8px;
+        border:none; background:var(--blaze); color:#fff; cursor:pointer; flex:none; }
+      .disc-btn:hover { filter:brightness(1.06); }
       .links { display:flex; gap:14px; margin-top:auto; padding-top:16px; font-size:11px; }
       .links a { color:var(--blaze-ink); text-decoration:none; font-weight:550; }
       .links a:hover { text-decoration:underline; }
@@ -171,6 +182,12 @@
 
       /* ── settings note ────────────────────────────────────────────── */
       .settings-note { font-size: 11px; color: var(--soft); margin: 0 0 12px; line-height: 1.5; }
+      /* ── reset settings ───────────────────────────────────────────── */
+      .settings-reset { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+      .reset-btn { font: inherit; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 8px;
+        border: 1px solid var(--line); background: var(--surface); color: var(--err); cursor: pointer; }
+      .reset-btn:hover { border-color: var(--err); }
+      .reset-btn[data-armed="1"] { background: var(--err); border-color: var(--err); color: #fff; }
 
       label { display: block; font-weight: 600; margin: 10px 0 4px; }
       label:first-child { margin-top: 0; }
@@ -218,6 +235,9 @@
       .receipt[data-state="err"]::before { background: var(--err); }
       .receipt a { color: var(--blaze-ink); }
       .receipt b { font-weight: 650; }
+      /* single flex child for the message — WITHOUT this, every inline element
+         in the injected html becomes its own flex item (column jumble). */
+      .receipt-msg { flex: 1 1 auto; min-width: 0; }
 
       /* ── storybook table view ──────────────────────────────────────── */
       .sb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -682,6 +702,14 @@
           <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
         </button>
       </div>
+      <!-- Local-bridge auto-discovery (2026-08-11): if a bridge is already
+           running on this computer (the dev-is-the-designer case), offer a
+           one-click connect — zero paste. Hidden until the probe hits. -->
+      <div class="discover" id="discoverBanner" style="display:none">
+        <span class="disc-dot"></span>
+        <span class="disc-text">Found a Sorb bridge running on this computer.</span>
+        <button class="disc-btn" id="discoverConnectBtn" type="button">Connect</button>
+      </div>
       <div class="links">
         <a href="https://metatoy.com/sorb" target="_blank" rel="noopener">Learn more</a>
         <a href="https://metatoy.com/sorb/docs" target="_blank" rel="noopener">Docs</a>
@@ -898,6 +926,11 @@
         Label inserted components
         <span class="hint">(wrap each insert in a named frame)</span>
       </label>
+
+      <div class="settings-reset">
+        <button class="reset-btn" id="resetBtn" type="button">Reset settings</button>
+        <p class="settings-note" style="margin:8px 0 0;">Clears the saved connection (bridge, app, key). You&rsquo;ll reconnect with a new invite.</p>
+      </div>
     </div>
 
     <!-- off-screen clipboard buffer -->
@@ -945,7 +978,9 @@
         var empty = !html || String(html).trim() === '';
         var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
         el.setAttribute('data-state', state);
-        el.innerHTML = html;
+        // Wrap in one flex child — the .receipt container is display:flex (for
+        // the status dot), so bare inline nodes would each become flex items.
+        el.innerHTML = empty ? '' : '<span class="receipt-msg">' + html + '</span>';
       }
       function setSbStatus(html, isErr) {
         var el = $('status-sb');
@@ -966,8 +1001,34 @@
       // Part 8 · handshake — set once a developer invite has been pasted; drives the
       // stateful intro primary (unset → "Invite a developer" leads; set → "Paste" leads).
       LS.hasHandshake       = 'sorb.hasHandshake';
-      function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
-      function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+      // Settings store. The Figma plugin iframe is SANDBOXED — localStorage
+      // access THROWS there (verified live 2026-08-11), so an in-memory map is
+      // the source of truth. localStorage is a best-effort mirror so the
+      // standalone/browser harness keeps its persistence, and figma.clientStorage
+      // (via code.js sorb-persist/sorb-restore) is the durable layer in Figma.
+      var MEM = {};
+      (function seedFromLocalStorage() {           // standalone continuity
+        for (var n in LS) { try { var v = localStorage.getItem(LS[n]); if (v != null) MEM[LS[n]] = v; } catch(e) {} }
+      })();
+      function lsGet(k) { return (k in MEM ? MEM[k] : '') || ''; }
+      function gatherSettings() {
+        var out = {};
+        for (var k in MEM) { if (MEM[k] != null) out[k] = MEM[k]; }
+        return out;
+      }
+      function lsSet(k, v) {
+        MEM[k] = v;
+        try { localStorage.setItem(k, v); } catch(e) {}
+        try { post('sorb-persist', { data: gatherSettings() }); } catch(e) {}
+      }
+      function hydrateFromRestore(data) {
+        if (!data) return;
+        for (var key in data) {
+          if (data[key] == null) continue;
+          MEM[key] = data[key];
+          try { localStorage.setItem(key, data[key]); } catch(e) {}
+        }
+      }
 
       var DEFAULT_ORIGIN = 'http://localhost:7777';
       var DEFAULT_APP    = 'http://localhost:5173';
@@ -980,21 +1041,43 @@
       // the pre-seeded preview in the demo tenant. Demo path lights up only when both
       // DEMO_PK and DEMO_APP are set.
       var DEMO_ORIGIN     = 'https://bridge.sorbcloud.com';
-      var DEMO_APP        = '';
+      var DEMO_APP        = 'https://demo.sorbcloud.com';   // public showcase — safe to commit (DEMO_PK stays deploy-injected)
       var DEMO_PK         = '';
       var DEMO_PREVIEW_ID = 'uUMw0sOr';
 
-      $('origin').value       = lsGet(LS.origin) || DEFAULT_ORIGIN;
-      $('appUrl').value       = lsGet(LS.app)    || DEFAULT_APP;
-      $('githubUrl').value    = lsGet(LS.gh)     || DEFAULT_GH;
-      $('storybookUrl').value = lsGet(LS.sb)     || DEFAULT_SB;
-      $('apiKey').value       = lsGet(LS.apiKey);
+      function syncSettingsInputs() {
+        $('origin').value       = lsGet(LS.origin) || DEFAULT_ORIGIN;
+        $('appUrl').value       = lsGet(LS.app)    || DEFAULT_APP;
+        $('githubUrl').value    = lsGet(LS.gh)     || DEFAULT_GH;
+        $('storybookUrl').value = lsGet(LS.sb)     || DEFAULT_SB;
+        $('apiKey').value       = lsGet(LS.apiKey);
+      }
+      syncSettingsInputs();
 
       $('origin').addEventListener('change',       function(e) { lsSet(LS.origin, e.target.value); });
       $('appUrl').addEventListener('change',       function(e) { lsSet(LS.app,    e.target.value); });
       $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); });
       $('storybookUrl').addEventListener('change', function(e) { lsSet(LS.sb,     e.target.value); });
       $('apiKey').addEventListener('change',       function(e) { lsSet(LS.apiKey, e.target.value.trim()); });
+
+      // Reset settings — two-click confirm (window.confirm is unreliable inside
+      // the plugin iframe). Wipes durable + local state, back to the front door.
+      (function() {
+        var armed = false, armT = null;
+        function disarm() { armed = false; $('resetBtn').removeAttribute('data-armed'); $('resetBtn').textContent = 'Reset settings'; }
+        $('resetBtn').onclick = function() {
+          if (!armed) {
+            armed = true;
+            $('resetBtn').setAttribute('data-armed', '1');
+            $('resetBtn').textContent = 'Click again to reset';
+            armT = setTimeout(disarm, 3000);
+            return;
+          }
+          clearTimeout(armT); disarm();
+          post('sorb-clear');   // wipe durable clientStorage (code.js replies sorb-cleared)
+          finishReset();        // wipe local + reset UI now (also covers the standalone case)
+        };
+      })();
 
       // U3 — flat-Settings inline Test (reuses testConnection; §3 honesty labels).
       function wireSettingsTest(inputId, btnId, resultId, kind) {
@@ -1122,6 +1205,13 @@
           setSbStatus('✓ Inserted ' + n + ' component' + (n === 1 ? '' : 's') + ' into the canvas.');
         } else if (msg.type === 'sorb-verify') {
           verifyInsert(msg.storyId, msg.bbox, msg.meta);
+        } else if (msg.type === 'sorb-restore') {
+          hydrateFromRestore(msg.data);   // durable settings from clientStorage
+          syncSettingsInputs();
+          if (!bootDone) boot();          // decide the first screen now that state is restored
+          else reRouteAfterLateRestore(); // fallback boot already ran — recover off the intro
+        } else if (msg.type === 'sorb-cleared') {
+          finishReset();
         } else if (msg.type === 'figmaUser') {
           figmaUserName = msg.name || null;
         } else if (msg.type === 'auto-freshness') {
@@ -1267,7 +1357,48 @@
         hideAllViews();
         hideConnPill();
         setHeaderLabel('Welcome to Sorb — choose a path to get started.');
+        discoverLocalBridge();
       }
+
+      // ── Local-bridge auto-discovery (front door) ───────────────────────
+      // The dev-is-the-designer case: a `sorb dev` bridge already running on
+      // THIS computer means we can connect with one click — no invite, no
+      // paste. Probes the loopback candidates' /health; first hit wins.
+      var DISCOVER_CANDIDATES = ['http://127.0.0.1:7777', 'http://localhost:7777'];
+      var discoveredOrigin = null;
+      function discoverLocalBridge() {
+        var banner = $('discoverBanner');
+        if (!banner) return;
+        banner.style.display = 'none';
+        Promise.all(DISCOVER_CANDIDATES.map(function(origin) {
+          var ctrl = new AbortController();
+          var t = setTimeout(function() { ctrl.abort(); }, 1500);
+          return fetch(origin + '/health', { signal: ctrl.signal, cache: 'no-store' })
+            .then(function(res) { clearTimeout(t); return res.ok ? origin : null; })
+            .catch(function(e) { clearTimeout(t); return null; });
+        })).then(function(hits) {
+          var found = null;
+          for (var i = 0; i < hits.length; i++) { if (hits[i]) { found = hits[i]; break; } }
+          if (!found) return;
+          // Still on the intro? (probe is async — the user may have moved on)
+          if (!$('introScreen').classList.contains('show')) return;
+          discoveredOrigin = found;
+          banner.style.display = '';
+        });
+      }
+      $('discoverConnectBtn').onclick = function() {
+        if (!discoveredOrigin) return;
+        lsSet(LS.origin, discoveredOrigin); $('origin').value = discoveredOrigin;
+        if (!lsGet(LS.app)) { lsSet(LS.app, DEFAULT_APP); $('appUrl').value = DEFAULT_APP; }
+        lsSet(LS.demo, '');                       // real local bridge, not the demo
+        lsSet(LS.hasHandshake, 'true');           // connected-state flag (drives boot routing)
+        autoVerifyFailedAt = 0;
+        connStartPoll();
+        attemptInitialVerify(discoveredOrigin).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
+        finishOnboarding('discovered');           // sets onb + path, showMain()
+        try { setStatus('Connected to the bridge on this computer — you&rsquo;re set.'); } catch (e) {}
+        try { $('committed').click(); } catch (e) {}   // load committed tokens
+      };
       function showPasteFlow() {
         hideAllScreens();
         $('tabs').hidden = true;
@@ -1364,7 +1495,9 @@
         receiptEl.setAttribute('data-state', 'ok');
         receiptEl.innerHTML = 'Connected to <b>' + escHtml(ns) + '</b> — you&rsquo;re set. Opening your tokens&hellip;';
         connStartPoll();
-        // Verify on load so the pill reads 'verified', not 'not yet verified'.
+        // Verify on load so the pill reads 'verified' straight away (fresh
+        // handshake → clear any prior auto-verify give-up first).
+        autoVerifyFailedAt = 0;
         attemptInitialVerify(t.origin).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
         setTimeout(function() {
           finishOnboarding('handshake');                            // sets onb + path, showMain()
@@ -1498,11 +1631,50 @@
         $('status').appendChild(btn);
       }
 
+      // ── Preview-app resolution (founder rule 2026-08-11) ───────────────
+      // Order: (1) the handshake's App URL if it's actually reachable → live
+      // preview on the developer's app; (2) else the hosted app, gated on a
+      // paid/hosted key; (3) else the public demo showcase. A local bridge and
+      // the hosted app can't share a preview id, so only path (1) pushes a live
+      // session — the fallbacks open the read-only showcase (canned preview).
+      function isPaidTier() { return activeKey() !== ''; }   // a sorb_pk_ hosted key = paid/hosted tier
+      function urlReachable(u) {
+        return new Promise(function(resolve) {
+          var done = false;
+          var t = setTimeout(function() { if (!done) { done = true; resolve(false); } }, 2500);
+          fetch(u, { mode: 'no-cors', cache: 'no-store' })
+            .then(function() { if (!done) { done = true; clearTimeout(t); resolve(true); } })
+            .catch(function(e) { if (!done) { done = true; clearTimeout(t); resolve(false); } });
+        });
+      }
+      async function resolvePreviewTarget(appUrl) {
+        if (appUrl && await urlReachable(appUrl)) return { mode: 'app', url: appUrl };
+        if (isPaidTier() && DEMO_APP)             return { mode: 'hosted', url: DEMO_APP };
+        if (DEMO_APP)                             return { mode: 'demo', url: DEMO_APP };
+        return { mode: 'none', url: appUrl };
+      }
+
       // ── Preview in app — ESTABLISHES the live session (§7 option 1) ─────
       $('preview').onclick = async function() {
         var origin = trimOrigin();
         var appUrl = $('appUrl').value.trim();
-        if (!origin || !appUrl) return setStatus('Set Bridge origin and App URL in Settings.', true);
+        if (!origin) return setStatus('Set Bridge origin in Settings.', true);
+        setStatus('Checking preview app…');
+        var target = await resolvePreviewTarget(appUrl);
+
+        // Fallback — the developer's app isn't reachable. Local preview ids don't
+        // exist on the hosted bridge, so we open the read-only showcase instead.
+        if (target.mode !== 'app') {
+          if (target.mode === 'none') {
+            return setStatus('Your app at <b>' + (appUrl || '—') + '</b> isn’t reachable — start it (e.g. <code>npm run dev</code>), or connect the hosted demo in Settings.', true);
+          }
+          var du = target.url + (target.url.indexOf('?') !== -1 ? '&' : '?') + 'preview=' + DEMO_PREVIEW_ID;
+          window.open(du, '_blank');
+          var what = target.mode === 'hosted' ? 'hosted demo app' : 'public demo';
+          return setStatus((appUrl ? 'Your app at <b>' + appUrl + '</b> wasn’t reachable — opened the ' : 'Opened the ') + what + ' instead. <a href="' + du + '" target="_blank">Open ↗</a>', target.mode === 'hosted' ? false : true);
+        }
+
+        // Path (1) — the developer's app is up → live preview on it.
         setStatus('Posting preview…');
         try {
           var res = await bfetch(origin + '/preview', {
@@ -1520,7 +1692,7 @@
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           livePreviewId = d.id;
           updateCta();                              // session live → CTA becomes Open PR
-          var url = appUrl + (appUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
+          var url = target.url + (target.url.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Preview ready: ' + d.id });
           setStatus('Preview <b>' + d.id + '</b> created. <a href="' + url + '" target="_blank">Open app ↗</a>' +
@@ -1704,8 +1876,8 @@
           if (!copied) { try { var buf = $('copybuf'); buf.value = json; buf.focus(); buf.select(); copied = document.execCommand('copy'); } catch(e) {} }
           if (!copied) { if (!rawOpen) toggleRaw(); $('tokens').value = json; }
           window.open(editUrl, '_blank');
-          setStatus((copied ? '✓ Copied <code>tokens.json</code> to clipboard. ' : 'Could not auto-copy — merged file is in the raw editor. ') +
-            'In GitHub: <b>⌘A → paste → Commit changes… → Propose changes</b>. (No changes detected.)');
+          setStatus((copied ? '📋 <b>tokens.json</b> copied · no changes detected' : '⚠️ Couldn&rsquo;t auto-copy — the merged file is in the raw editor') +
+            '<br>In GitHub: <b>⌘A</b> → <b>⌘V</b> → <b>Commit changes…</b> → <b>Propose changes</b>');
           return;
         }
 
@@ -2838,8 +3010,11 @@
       // httpOk into setConnState():
       //   green-live   — /health 200 AND last verify < 5 min ago
       //   green-stale  — /health 200 AND last verify ≥ 5 min ago
-      //   amber        — /health 200 but never verified (no lastVerifiedAt)
-      //   red          — non-200 / unreachable / no origin
+      //   amber        — /health 200, never verified → TRANSIENT "connecting…"
+      //                  (kicks an auto-verify; never a resting state — the
+      //                  designer shouldn't have to know what "verify" means)
+      //   red          — unreachable / no origin, OR auto-verify kept failing
+      //                  (actionable, plain-language label)
 
       var connPollTimer = null;
 
@@ -2860,10 +3035,40 @@
         var h = Math.floor(m / 60);         if (h < 24) return h + 'h ago';
         return Math.floor(h / 24) + 'd ago';
       }
+      // Auto-verify driver for the transient amber state. The pill NEVER rests
+      // on "not yet verified" — a healthy-but-unverified bridge kicks a real
+      // baseline verify (with one 3s retry). Only if that keeps failing does
+      // the pill go red-actionable; a 30s cool-down lets it self-heal once the
+      // developer fixes things (the 5s health poll re-kicks it).
+      var autoVerifyInFlight = false, autoVerifyFailedAt = 0;
+      var AUTO_VERIFY_COOLDOWN_MS = 30000;
+      function kickAutoVerify() {
+        if (autoVerifyInFlight) return;
+        autoVerifyInFlight = true;
+        attemptInitialVerify(connOrigin()).then(function(ok) {
+          if (ok) { autoVerifyInFlight = false; autoVerifyFailedAt = 0; setConnState(true); return; }
+          setTimeout(function() {
+            attemptInitialVerify(connOrigin()).then(function(ok2) {
+              autoVerifyInFlight = false;
+              if (ok2) { autoVerifyFailedAt = 0; }
+              else { autoVerifyFailedAt = Date.now(); }
+              setConnState(true);
+            });
+          }, 3000);
+        });
+      }
       function resolveConnState(httpOk) {
-        if (!httpOk) return { state: 'red', label: 'bridge unreachable' };
+        if (!httpOk) return { state: 'red', label: 'can’t reach the bridge',
+          title: 'Ask your developer to run `sorb dev` and leave it running — the plugin reconnects on its own.' };
         var ts = lsGet(LS.lastVerifiedAt);
-        if (!ts) return { state: 'amber', label: 'not yet verified' };
+        if (!ts) {
+          if (autoVerifyFailedAt && (Date.now() - autoVerifyFailedAt) < AUTO_VERIFY_COOLDOWN_MS) {
+            return { state: 'red', label: 'can’t read tokens',
+              title: 'The bridge is up but its tokens aren’t readable — ask your developer to check `sorb dev`. Retrying automatically.' };
+          }
+          kickAutoVerify();
+          return { state: 'amber', label: 'connecting…', title: 'Connecting to your project…' };
+        }
         var live = (Date.now() - new Date(ts).getTime()) < VERIFY_STALE_MS;
         return { state: live ? 'green-live' : 'green-stale', label: 'verified ' + fmtElapsed(ts) };
       }
@@ -2874,7 +3079,7 @@
         pill.setAttribute('data-state', r.state);
         label.textContent = r.label;
         var ts = lsGet(LS.lastVerifiedAt);
-        pill.title = ts ? ('Last verified: ' + new Date(ts).toLocaleString()) : 'Bridge connection status';
+        pill.title = r.title || (ts ? ('Last verified: ' + new Date(ts).toLocaleString()) : 'Bridge connection status');
       }
 
       function connOrigin() {
@@ -2882,7 +3087,26 @@
         return (raw || DEFAULT_ORIGIN).trim().replace(/\/$/, '');
       }
 
-      // U3 · Feature A — SHA-256 of the committed token map; also seeds the drift
+      // Stable digest of a string. crypto.subtle is UNDEFINED in Figma's
+      // sandboxed plugin iframe (insecure context — verified live 2026-08-11),
+      // so fall back to FNV-1a there. The hash is only ever compared against a
+      // baseline computed in the same environment (drift detection), so the
+      // two hash spaces never mix; prefixes keep them distinguishable anyway.
+      function fnv1aHex(str) {
+        var h = 0x811c9dc5;
+        for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+        return 'fnv-' + ('00000000' + h.toString(16)).slice(-8);
+      }
+      function digestHex(str) {
+        if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+          return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(buf) {
+            return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+          });
+        }
+        return Promise.resolve(fnv1aHex(str));
+      }
+
+      // U3 · Feature A — digest of the committed token map; also seeds the drift
       // snapshot. Authed route → via bfetch.
       async function hashTokenLatest(origin) {
         if (!origin) return null;
@@ -2894,8 +3118,7 @@
           for (var i = 0; i < keys.length; i++) stable[keys[i]] = json[keys[i]];
           var stableStr = JSON.stringify(stable);
           lsSet(LS.lastTokenSnapshot, stableStr);            // side-effect: seed drift snapshot
-          var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stableStr));
-          return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+          return await digestHex(stableStr);
         } catch (e) { return null; }
       }
 
@@ -3253,8 +3476,7 @@
             if (!currentObj) return;
             var keys = Object.keys(currentObj).sort(), stable = {};
             for (var i = 0; i < keys.length; i++) stable[keys[i]] = currentObj[keys[i]];
-            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(stable))).then(function(buf) {
-              var currentHash = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+            return digestHex(JSON.stringify(stable)).then(function(currentHash) {
               if (currentHash === storedHash) return;
               try { if (sessionStorage.getItem('sorb_drift_dismissed_' + currentHash)) return; } catch (e) {}
               var snap = lsGet(LS.lastTokenSnapshot);
@@ -3276,7 +3498,7 @@
         var legacy = ['sorb_onboarded', 'sorb.wizardDone', 'sorb.introSeen'];
         var seen = lsGet(LS.onb) === 'true';
         for (var i = 0; i < legacy.length; i++) {
-          var v = lsGet(legacy[i]);
+          var v = ''; try { v = localStorage.getItem(legacy[i]) || ''; } catch (e) {}   // legacy keys live only in real localStorage
           if (v && v !== 'no' && v !== '0') seen = true;
           try { localStorage.removeItem(legacy[i]); } catch (e) {}
         }
@@ -3287,15 +3509,54 @@
       // onboarding OR saved a handshake — re-opening the plugin shouldn't drop a
       // configured user back on the front-door connector. Connection editing is
       // still reachable (the ? re-opens the intro; Settings holds the fields).
-      if (lsGet(LS.onb) === 'true' || lsGet(LS.hasHandshake) === 'true') {
-        showMain();
-        // Verify on open too (not just at redeem): a connected plugin that has
-        // never verified would otherwise sit at 'not yet verified'. If the bridge
-        // is serving tokens, establish the baseline so the pill reads 'verified'.
-        if (!lsGet(LS.lastVerifiedAt)) {
-          attemptInitialVerify(connOrigin()).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
-        }
-      } else showIntro();
+      var bootDone = false, resetDone = false;
+      function isConnectedState() { return lsGet(LS.onb) === 'true' || lsGet(LS.hasHandshake) === 'true'; }
+      function routeFromState() {
+        if (isConnectedState()) {
+          showMain();
+          // Verify on open too (not just at redeem): a connected plugin that has
+          // never verified would otherwise sit on a non-green pill. If the
+          // bridge is serving tokens, establish the baseline → pill reads 'verified'.
+          if (!lsGet(LS.lastVerifiedAt)) {
+            attemptInitialVerify(connOrigin()).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
+          }
+          // Load the committed tokens too — a connected designer should never
+          // boot into an empty "Connect your project" grid.
+          setTimeout(function() {
+            try { if (!Object.keys(tokenSet || {}).length) $('committed').click(); } catch (e) {}
+          }, 300);
+        } else showIntro();
+      }
+      function boot() {
+        if (bootDone) return; bootDone = true;
+        routeFromState();
+      }
+      // Late clientStorage restore (arrived AFTER the fallback boot already
+      // showed the intro): re-route into the app — but only off the intro
+      // screen, never yanking a user out of a flow they started, and never
+      // after an explicit reset.
+      function reRouteAfterLateRestore() {
+        if (resetDone) return;
+        if (isConnectedState() && $('introScreen').classList.contains('show')) routeFromState();
+      }
+      function finishReset() {
+        for (var m in MEM) { delete MEM[m]; }   // in-memory store is the source of truth
+        try { for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf('sorb.') === 0) localStorage.removeItem(k); } } catch (e) {}
+        bootDone = true;               // a late restore must not re-boot into the app
+        resetDone = true;
+        autoVerifyFailedAt = 0;
+        syncSettingsInputs();          // fields back to defaults
+        showIntro();
+        try { setStatus('Settings reset — reconnect with a new invite.'); } catch (e) {}
+      }
+      // Ask the main thread for the durable settings snapshot. code.js also
+      // pushes one eagerly on startup, but THAT send races the iframe load (a
+      // figma.ui.postMessage before the UI listens is silently dropped) — this
+      // request-side handshake closes the race; hydrate is idempotent.
+      post('sorb-ui-ready');
+      // Boot once the clientStorage restore arrives (Figma); this timeout is the
+      // fallback for a context with no main thread (e.g. ui.html opened alone).
+      setTimeout(boot, 1500);
     </script>
   </body>
 </html>
