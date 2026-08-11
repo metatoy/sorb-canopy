@@ -43,10 +43,22 @@
       .glyph { width:16px; height:16px; border-radius:5px; background:var(--blaze); flex:0 0 auto; }
       .wm { font-weight:650; font-size:13px; letter-spacing:-.01em; }
       .hdr .sp { flex:1; }
-      .qm { width:20px; height:20px; border-radius:50%; border:1px solid var(--line);
+      .qm { position:relative; width:20px; height:20px; border-radius:50%; border:1px solid var(--line);
         color:var(--soft); font-size:12px; line-height:1; display:flex; align-items:center;
-        justify-content:center; cursor:pointer; background:var(--surface); padding:0; flex:0 0 auto; }
-      .qm:hover { color:var(--ink); border-color:var(--taupe); }
+        justify-content:center; cursor:help; background:var(--surface); padding:0; flex:0 0 auto; }
+      .qm:hover, .qm:focus-visible { color:var(--ink); border-color:var(--taupe); outline:none; }
+      /* passive hover tooltip — the ? explains Sorb; it is NOT a link. */
+      .qm-tip { position:absolute; top:26px; right:0; width:210px; background:var(--ink); color:#fff;
+        font-size:11px; font-weight:400; line-height:1.45; letter-spacing:0; text-align:left;
+        padding:8px 10px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.22);
+        opacity:0; transform:translateY(-2px); pointer-events:none; transition:opacity .12s ease, transform .12s ease;
+        z-index:40; white-space:normal; }
+      .qm:hover .qm-tip, .qm:focus-visible .qm-tip { opacity:1; transform:translateY(0); }
+      /* welcome line in the header strip — intro/front-door only (in place of the
+         connection pill, which is hidden until you're connected). */
+      .intro-welcome { font-size:12.5px; font-weight:600; color:var(--ink-2);
+        letter-spacing:-.005em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        min-width:0; }
 
       /* ── tabs ────────────────────────────────────────────────────────── */
       .tabs { display:flex; gap:2px; padding:0 8px; border-bottom:1px solid var(--line);
@@ -114,6 +126,10 @@
       .redeem-cta { width:100%; margin-top:12px; background:var(--blaze); color:#fff; border:none;
         border-radius:8px; padding:11px; font-size:13px; font-weight:650; cursor:pointer; flex:0 0 auto; }
       .redeem-hint, .copy-hint { font-size:10.5px; color:var(--taupe); margin-top:9px; line-height:1.45; }
+      /* inline paste-back section on the Invite-a-developer screen */
+      .invite-return { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+      .invite-return-label { font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:8px; }
+      .invite-ta-sm { height:52px; }   /* shorter paste-back field on the invite screen */
       .msg-box { border:1px solid var(--line); border-radius:8px; background:var(--surface-2);
         padding:12px 13px; font-size:11.5px; line-height:1.6; color:var(--ink-2); white-space:pre-wrap; }
       .msg-box code { font-family:var(--mono); font-size:11px; background:var(--line-2);
@@ -625,9 +641,10 @@
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">—</span>
       </div>
+      <span class="intro-welcome" id="introWelcome" style="display:none">Welcome to Sorb — choose a path to get started.</span>
       <div class="sp"></div>
       <div id="teammateIndicator" class="teammate-indicator" style="display:none"></div>
-      <button class="qm" id="helpBtn" title="What is Sorb?" aria-label="What is Sorb?">?</button>
+      <span class="qm" id="helpBtn" tabindex="0" role="note" aria-label="What is Sorb? Sorb previews proposed design tokens on your running app — propose a change, see it live, and verify before you merge.">?<span class="qm-tip">Sorb previews proposed design tokens on your running app — propose a change, see it live, and verify before you merge.</span></span>
     </div>
 
     <!-- ── INTRO (first-open front door; re-openable via the ? button) ── -->
@@ -675,7 +692,6 @@
     <!-- ── PASTE-AN-INVITE FLOW (Part 8 · redeem a developer handshake) ──── -->
     <div class="flow" id="pasteFlow">
       <button class="flow-back" id="pasteBack">&larr; Back</button>
-      <div class="flow-h">Paste your invite</div>
       <div class="flow-p">Paste the invite your developer sent. Sorb reads it and connects — you won&rsquo;t need to enter any servers, URLs, or keys.</div>
 
       <textarea class="invite-ta" id="inviteInput" aria-label="Paste the invite your developer sent" placeholder="sorb://handshake/…   or   paste the code"></textarea>
@@ -690,22 +706,26 @@
     <!-- ── INVITE-A-DEVELOPER FLOW (Part 8 · copyable request message) ───── -->
     <div class="flow" id="inviteFlow">
       <button class="flow-back" id="inviteBack">&larr; Back</button>
-      <div class="flow-h">Invite a developer</div>
       <div class="flow-p">Send this to whoever runs the app&rsquo;s code. They run one command and send you back an invite to paste here.</div>
 
       <div class="msg-box" id="inviteMsg">Hey — I&rsquo;m using the Sorb plugin in Figma to preview our design tokens on the running app. To connect it, from the app&rsquo;s repo:
 
 <span class="step-n">1.</span> Install the bridge:  <code>npm i -g @sorb/juice</code>
-<span class="step-n">2.</span> Start it:  <code>sorb dev</code>
-<span class="step-n">3.</span> Make my invite:  <code>sorb handshake --copy</code>
-<span class="step-n">4.</span> Send me the code it prints — I&rsquo;ll paste it into the plugin. That&rsquo;s it.</div>
+<span class="step-n">2.</span> Start it and <strong>leave it running</strong>:  <code>sorb dev</code>
+<span class="step-n">3.</span> In a second terminal, make my invite:  <code>sorb handshake --copy</code>
+<span class="step-n">4.</span> Send me the code it prints. Keep <code>sorb dev</code> running so I can connect — that&rsquo;s it.</div>
 
       <button class="copy-cta" id="inviteCopyBtn">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/><path d="M2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1H3a1 1 0 0 1-1-1z"/></svg>
         <span class="copy-label">Copy message</span>
       </button>
 
-      <div class="copy-hint">Once they send the invite back, choose &ldquo;Paste an invite&rdquo; on the home screen and drop it in.</div>
+      <div class="invite-return" id="inviteReturn" style="display:none">
+        <div class="invite-return-label">Got the code back? Paste it here:</div>
+        <textarea class="invite-ta invite-ta-sm" id="inviteReturnInput" aria-label="Paste the invite code your developer sent back" placeholder="sorb://handshake/…   or   paste the code"></textarea>
+        <button class="redeem-cta" id="inviteRedeemBtn">Redeem invite</button>
+        <div class="receipt" id="inviteReturnReceipt" data-state="empty" role="status" aria-live="polite" aria-atomic="true" style="margin-top:14px;"></div>
+      </div>
     </div>
 
     <!-- ── TABS (Tokens / Components / Settings) ─────────────────────────── -->
@@ -1227,17 +1247,33 @@
         }
       }
 
+      // The connection/verify pill only makes sense once you're connected, so it
+      // is hidden on the non-app screens and shown only in the main app view.
+      function hideConnPill() { $('connPill').style.display = 'none'; }
+      function showConnPill() { $('connPill').style.display = ''; }
+      // The header strip carries a context label (welcome / screen title) on the
+      // non-app screens; in the app it gives way to the connection pill.
+      function setHeaderLabel(t) { var el = $('introWelcome'); el.textContent = t; el.style.display = ''; }
+      function hideHeaderLabel() { $('introWelcome').style.display = 'none'; }
+
+      // NB: the ? in the header is a passive hover TOOLTIP ("what is Sorb"), not a
+      // link — it never navigates, so there's no show/hide or return machinery.
+
       function showIntro() {
         hideAllScreens();
         applyIntroState();
         $('introScreen').classList.add('show');
         $('tabs').hidden = true;
         hideAllViews();
+        hideConnPill();
+        setHeaderLabel('Welcome to Sorb — choose a path to get started.');
       }
       function showPasteFlow() {
         hideAllScreens();
         $('tabs').hidden = true;
         hideAllViews();
+        hideConnPill();
+        setHeaderLabel('Paste your invite');
         var r = $('redeemReceipt'); r.setAttribute('data-state', 'empty'); r.innerHTML = '';
         $('pasteFlow').classList.add('show');
         try { $('inviteInput').focus(); } catch (e) {}
@@ -1246,15 +1282,21 @@
         hideAllScreens();
         $('tabs').hidden = true;
         hideAllViews();
+        hideConnPill();
+        setHeaderLabel('Invite a developer');
+        var rr = $('inviteReturnReceipt'); if (rr) { rr.setAttribute('data-state', 'empty'); rr.innerHTML = ''; }
+        var ret = $('inviteReturn'); if (ret) ret.style.display = 'none';   // revealed after Copy message
+        var iri = $('inviteReturnInput'); if (iri) iri.value = '';
         $('inviteFlow').classList.add('show');
       }
       function showMain() {
         hideAllScreens();
         $('tabs').hidden = false;
+        showConnPill();
+        hideHeaderLabel();
         showView('tokens');
         updateCta();
       }
-      $('helpBtn').onclick = showIntro;
 
       $('pathPasteInvite').onclick = showPasteFlow;
       $('pathInviteDev').onclick   = showInviteFlow;
@@ -1292,22 +1334,23 @@
             .toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
         } catch (e) { return 'an earlier date'; }
       }
-      function redeemError(html) {
-        var el = $('redeemReceipt');
-        el.setAttribute('data-state', 'err');
-        el.innerHTML = html;
+      function redeemError(receiptEl, html) {
+        receiptEl.setAttribute('data-state', 'err');
+        receiptEl.innerHTML = html;
       }
 
-      // Redeem: decode → validate (v / required / exp) → auto-fill all five (clone of the
-      // demo-mode auto-config block: write LS.* + input .value) → connect + load.
-      $('redeemBtn').onclick = function() {
-        var dec = decodeHandshake($('inviteInput').value);
-        if (!dec.ok) return redeemError("That doesn&rsquo;t look like a Sorb invite. Paste the whole code your developer sent.");
+      // Redeem from any input → its paired receipt: decode → validate (v / required
+      // / exp) → auto-fill all five fields → connect + load. Shared by the
+      // "Paste an invite" flow AND the inline paste-back field on the "Invite a
+      // developer" screen, so the designer can complete the loop without leaving.
+      function redeemFrom(inputEl, receiptEl) {
+        var dec = decodeHandshake(inputEl.value);
+        if (!dec.ok) return redeemError(receiptEl, "That doesn&rsquo;t look like a Sorb invite. Paste the whole code your developer sent.");
         var t = dec.token;
-        if (t.v !== 1) return redeemError("This invite was made by a newer Sorb. Update the plugin, or ask for a fresh invite.");
-        if (!t.origin || !t.appUrl) return redeemError("This invite is incomplete — ask your developer to re-run <code>sorb handshake</code>.");
+        if (t.v !== 1) return redeemError(receiptEl, "This invite was made by a newer Sorb. Update the plugin, or ask for a fresh invite.");
+        if (!t.origin || !t.appUrl) return redeemError(receiptEl, "This invite is incomplete — ask your developer to re-run <code>sorb handshake</code>.");
         if (t.exp && (Math.floor(Date.now() / 1000) > Number(t.exp))) {
-          return redeemError("This invite expired on " + escHtml(fmtExpDate(t.exp)) + " — ask your developer to send a new one.");
+          return redeemError(receiptEl, "This invite expired on " + escHtml(fmtExpDate(t.exp)) + " — ask your developer to send a new one.");
         }
         // success — persist the five fields to LS + the (Advanced) inputs
         var pk = (t.pk == null ? '' : String(t.pk)).trim();
@@ -1318,31 +1361,37 @@
         lsSet(LS.demo, '');                                          // real bridge, not the demo pk
         lsSet(LS.hasHandshake, 'true');
         var ns = t.namespace ? String(t.namespace) : 'your app';
-        var receipt = $('redeemReceipt');
-        receipt.setAttribute('data-state', 'ok');
-        receipt.innerHTML = 'Connected to <b>' + escHtml(ns) + '</b> — you&rsquo;re set. Opening your tokens&hellip;';
+        receiptEl.setAttribute('data-state', 'ok');
+        receiptEl.innerHTML = 'Connected to <b>' + escHtml(ns) + '</b> — you&rsquo;re set. Opening your tokens&hellip;';
         connStartPoll();
+        // Verify on load so the pill reads 'verified', not 'not yet verified'.
+        attemptInitialVerify(t.origin).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
         setTimeout(function() {
           finishOnboarding('handshake');                            // sets onb + path, showMain()
           try { setStatus('Connected to <b>' + escHtml(ns) + '</b> — you&rsquo;re set.'); } catch (e) {}
           try { $('committed').click(); } catch (e) {}              // load committed tokens from the bridge
         }, 700);
-      };
+      }
+      $('redeemBtn').onclick       = function() { redeemFrom($('inviteInput'),       $('redeemReceipt')); };
+      $('inviteRedeemBtn').onclick = function() { redeemFrom($('inviteReturnInput'), $('inviteReturnReceipt')); };
 
       // ── "Invite a developer" — copyable request message ──────────────────
+      // Keep this in sync with the visible #inviteMsg markup above.
       var INVITE_MSG = [
         "Hey — I'm using the Sorb plugin in Figma to preview our design tokens on the running app. To connect it, from the app's repo:",
         '',
         '1. Install the bridge:  npm i -g @sorb/juice',
-        '2. Start it:  sorb dev',
-        '3. Make my invite:  sorb handshake --copy',
-        "4. Send me the code it prints — I'll paste it into the plugin. That's it."
+        '2. Start it and leave it running:  sorb dev',
+        '3. In a second terminal, make my invite:  sorb handshake --copy',
+        "4. Send me the code it prints. Keep sorb dev running so I can connect — that's it."
       ].join('\n');
       $('inviteCopyBtn').onclick = function() {
         var label = $('inviteCopyBtn').querySelector('.copy-label');
         copyReceipt(INVITE_MSG).then(function(ok) {                  // reuses clipboard + #copybuf fallback
           if (label) label.textContent = ok ? 'Copied!' : 'Copy failed';
           setTimeout(function() { if (label) label.textContent = 'Copy message'; }, 1800);
+          // reveal the paste-back field only now — the code comes AFTER they send this
+          var ret = $('inviteReturn'); if (ret) ret.style.display = '';
         });
       };
 
@@ -2850,6 +2899,26 @@
         } catch (e) { return null; }
       }
 
+      // On a fresh handshake connect there's no verify yet, so the pill would sit
+      // at amber "not yet verified" — confusing right after a successful connect.
+      // Attempt a real baseline verify: read the bridge's current token map and,
+      // if it responds, record it as the verified baseline (hash + ids + count +
+      // timestamp). Honest — it only marks verified when the bridge actually
+      // served its tokens; on failure the pill is left untouched.
+      async function attemptInitialVerify(origin) {
+        try {
+          var hash = await hashTokenLatest(origin);          // reads /tokens/latest + seeds the drift snapshot
+          if (!hash) return false;
+          var snap = {}; try { snap = JSON.parse(lsGet(LS.lastTokenSnapshot) || '{}'); } catch (e) {}
+          var ids = Object.keys(snap).sort();
+          lsSet(LS.lastTokenHash, hash);
+          lsSet(LS.lastTokenIds, JSON.stringify(ids));
+          lsSet(LS.lastTokenCount, String(ids.length));
+          lsSet(LS.lastVerifiedAt, new Date().toISOString());
+          return true;
+        } catch (e) { return false; }
+      }
+
       // U3 · Feature E — heartbeat dot renderer + watchdog.
       function setFreshness(state, meta) {
         var dot = $('freshDot'); if (!dot) return;
@@ -3214,7 +3283,19 @@
         if (seen) lsSet(LS.onb, 'true');
       })();
 
-      if (lsGet(LS.onb) === 'true') showMain(); else showIntro();
+      // Boot straight into the connected app once the user has finished
+      // onboarding OR saved a handshake — re-opening the plugin shouldn't drop a
+      // configured user back on the front-door connector. Connection editing is
+      // still reachable (the ? re-opens the intro; Settings holds the fields).
+      if (lsGet(LS.onb) === 'true' || lsGet(LS.hasHandshake) === 'true') {
+        showMain();
+        // Verify on open too (not just at redeem): a connected plugin that has
+        // never verified would otherwise sit at 'not yet verified'. If the bridge
+        // is serving tokens, establish the baseline so the pill reads 'verified'.
+        if (!lsGet(LS.lastVerifiedAt)) {
+          attemptInitialVerify(connOrigin()).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
+        }
+      } else showIntro();
     </script>
   </body>
 </html>
