@@ -85,6 +85,13 @@ async function collectTokens() {
 // module loader and this repo has no build step (CLAUDE.md hard rule), so
 // code.js can't require() that file. Keep the two copies in sync.
 
+// One collection per tier so semantic can (later) alias primitive and component
+// alias semantic — mirroring the DTCG ref graph. (Declared HERE, not next to
+// syncVariables below: TIER_BY_COLLECTION_NAME reads it at module-load time,
+// and a later `const` declaration is a TDZ ReferenceError that kills the whole
+// plugin on load.)
+const TIER_COLLECTION = { primitive: 'Primitives', semantic: 'Semantic', component: 'Component' };
+
 const TIER_BY_COLLECTION_NAME = Object.keys(TIER_COLLECTION).reduce((acc, tier) => {
   acc[TIER_COLLECTION[tier]] = tier;
   return acc;
@@ -261,10 +268,9 @@ const toFigmaValue = (value) => {
   return { type: 'STRING', value: v }; // shadows, 'none', etc.
 };
 
-// One collection per tier so semantic can (later) alias primitive and component
-// alias semantic — mirroring the DTCG ref graph. Variable names are the token
-// `id` with dots → slashes, which Figma renders as nested groups.
-const TIER_COLLECTION = { primitive: 'Primitives', semantic: 'Semantic', component: 'Component' };
+// Variable names are the token `id` with dots → slashes, which Figma renders
+// as nested groups. (TIER_COLLECTION itself is declared near the top of the
+// file — TIER_BY_COLLECTION_NAME needs it at module-load time.)
 const idToVarName = (id) => String(id).split('.').join('/');
 
 async function syncVariables(tokens) {
