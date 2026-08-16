@@ -106,6 +106,12 @@ const tierFromCollectionName = (name) => TIER_BY_COLLECTION_NAME[name];
 // idToVarName (dots → slashes) used elsewhere in this file.
 const toDottedId = (name) => name.split('/').join('.');
 
+// DTCG font-weight tokens (font.weight.*) are unitless numbers — the one
+// FLOAT family the px formatting must not touch. Figma stores bare FLOATs;
+// exporting "400px" is both unfaithful and a guaranteed /verify/figma
+// mismatch against the DTCG source (BLOCKERS-v5 #2).
+const isUnitlessTokenId = (id) => id === 'font.weight' || id.indexOf('font.weight.') === 0;
+
 // Figma resolvedType (+ the already CSS-formatted value) → DTCG token `type`.
 // FLOAT is 'dimension' when the formatted value carries a unit ("...px"),
 // else 'number' (the FLOAT-0 case — toTokenValue renders that as bare "0").
@@ -143,9 +149,11 @@ async function collectResolvedTokens() {
       }
     }
 
-    const cssValue = toTokenValue(v.resolvedType, value);
+    const dottedId = toDottedId(v.name);
+    let cssValue = toTokenValue(v.resolvedType, value);
+    if (v.resolvedType === 'FLOAT' && isUnitlessTokenId(dottedId)) cssValue = String(value);
     const entry = {
-      id: toDottedId(v.name),
+      id: dottedId,
       cssVar: '--' + toTokenName(v.name),
       value: cssValue,
       type: figmaTypeToTokenType(v.resolvedType, cssValue),

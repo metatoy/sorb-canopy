@@ -131,3 +131,29 @@ describe('toResolvedEntry — the full per-Variable → resolved-map-entry mappi
     assert.deepEqual(Object.keys(entry).sort(), ['cssVar', 'id', 'type', 'value']);
   });
 });
+
+describe('font-weight unitless export (BLOCKERS-v5 #2)', () => {
+  const { isUnitlessTokenId } = require('../lib/token-mapping.js');
+
+  it('font.weight.* ids are unitless; other FLOAT families are not', () => {
+    assert.equal(isUnitlessTokenId('font.weight.regular'), true);
+    assert.equal(isUnitlessTokenId('font.weight.semibold'), true);
+    assert.equal(isUnitlessTokenId('font.weight'), true);
+    assert.equal(isUnitlessTokenId('radius.control'), false);
+    assert.equal(isUnitlessTokenId('space.4'), false);
+    assert.equal(isUnitlessTokenId('font.size.body'), false); // sizes ARE px dimensions
+  });
+
+  it('a font-weight FLOAT exports as a bare number with type "number"', () => {
+    const entry = toResolvedEntry('font/weight/regular', 'Primitives', 'FLOAT', 400);
+    assert.equal(entry.value, '400');
+    assert.equal(entry.type, 'number');
+    assert.equal(entry.cssVar, '--font-weight-regular');
+  });
+
+  it('non-weight FLOATs keep the px formatting (regression)', () => {
+    const entry = toResolvedEntry('font/size/body', 'Primitives', 'FLOAT', 16);
+    assert.equal(entry.value, '16px');
+    assert.equal(entry.type, 'dimension');
+  });
+});
