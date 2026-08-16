@@ -66,6 +66,25 @@ In the panel:
 > allowed during development). The page must be HTTPS-reachable if you open
 > the app over HTTPS — same mixed-content rule as the provider's `origin`.
 
+## Figma reference pipeline (Settings → Export variables to bridge)
+
+A second, separate export path from **Sync Variables** (which goes
+code → Figma). This one goes **Figma → the bridge**, so you can check
+whether what's actually in this file's Variables still matches your
+committed DTCG tokens:
+
+- **Export variables to bridge** collects this file's Variables in the same
+  shape `GET /tokens/resolved` uses (`{ id, cssVar, value, tier, type }`) and
+  `POST`s it to the bridge at `POST /tokens/figma`.
+- The plugin then immediately calls `GET /verify/figma`, which diffs the
+  export against the resolved DTCG map by `cssVar` and reports mismatches,
+  tokens missing from the Figma file, and Figma variables not (yet) tracked
+  as tokens.
+- This is a **read-only reference check** — it never writes back to either
+  side. The DTCG token source stays the source of truth; the Figma export is
+  a mirror. (Contrast with **Sync Variables**, which does write Figma
+  Variables from the token source.)
+
 ## Token mapping
 
 - `COLOR` variables → hex (`#rrggbb`, or `#rrggbbaa` when alpha < 1)

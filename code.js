@@ -71,6 +71,95 @@ async function collectTokens() {
   return tokens;
 }
 
+// ─── resolved-map export (Figma Variables → the ResolvedToken[] shape) ───────
+// Feeds POST /tokens/figma on the bridge (sorb-juice), which diffs it against
+// GET /tokens/resolved at GET /verify/figma — the Figma-vs-DTCG reference
+// check (FLS v0.5.0 P1). Unlike collectTokens() above (which collapses to a
+// flat { cssVarName: value } map for the token editor), this keeps one entry
+// per token: { id, cssVar, value, tier?, type }, the same shape
+// GET /tokens/resolved already returns.
+//
+// tierFromCollectionName / figmaTypeToTokenType / toDottedId are pure (no
+// figma.* calls) and are duplicated byte-for-byte in lib/token-mapping.js,
+// which node:test exercises directly — the Figma plugin sandbox has no
+// module loader and this repo has no build step (CLAUDE.md hard rule), so
+// code.js can't require() that file. Keep the two copies in sync.
+
+const TIER_BY_COLLECTION_NAME = Object.keys(TIER_COLLECTION).reduce((acc, tier) => {
+  acc[TIER_COLLECTION[tier]] = tier;
+  return acc;
+}, {});
+
+// Figma Variable Collection name → DTCG tier, or undefined when the
+// collection isn't one of Sorb's three tier collections (the exporter omits
+// `tier` entirely for those, per the resolved-map contract).
+const tierFromCollectionName = (name) => TIER_BY_COLLECTION_NAME[name];
+
+// Dotted DTCG id form ("button.primary.bg.default") — the inverse of
+// idToVarName (dots → slashes) used elsewhere in this file.
+const toDottedId = (name) => name.split('/').join('.');
+
+// Figma resolvedType (+ the already CSS-formatted value) → DTCG token `type`.
+// FLOAT is 'dimension' when the formatted value carries a unit ("...px"),
+// else 'number' (the FLOAT-0 case — toTokenValue renders that as bare "0").
+const figmaTypeToTokenType = (resolvedType, cssValue) => {
+  if (resolvedType === 'COLOR') return 'color';
+  if (resolvedType === 'FLOAT') {
+    return typeof cssValue === 'string' && cssValue.indexOf('px') !== -1 ? 'dimension' : 'number';
+  }
+  return 'string'; // STRING / BOOLEAN
+};
+
+// Same variable/alias walk as collectTokens(), but emits one resolved-map
+// entry per Variable instead of collapsing into a flat map.
+async function collectResolvedTokens() {
+  const out = [];
+  const collections = await figma.variables.getLocalVariableCollectionsAsync();
+  const collectionNameById = {};
+  const defaultModeByCollection = {};
+  for (const c of collections) {
+    collectionNameById[c.id] = c.name;
+    defaultModeByCollection[c.id] = c.defaultModeId;
+  }
+
+  const vars = await figma.variables.getLocalVariablesAsync();
+  for (const v of vars) {
+    const modeId = defaultModeByCollection[v.variableCollectionId];
+    let value = v.valuesByMode[modeId];
+
+    // Resolve one level of alias (e.g. semantic → primitive) — same as collectTokens().
+    if (value && value.type === 'VARIABLE_ALIAS') {
+      const target = await figma.variables.getVariableByIdAsync(value.id);
+      if (target) {
+        const targetMode = defaultModeByCollection[target.variableCollectionId];
+        value = target.valuesByMode[targetMode];
+      }
+    }
+
+    const cssValue = toTokenValue(v.resolvedType, value);
+    const entry = {
+      id: toDottedId(v.name),
+      cssVar: '--' + toTokenName(v.name),
+      value: cssValue,
+      type: figmaTypeToTokenType(v.resolvedType, cssValue),
+    };
+    const tier = tierFromCollectionName(collectionNameById[v.variableCollectionId]);
+    if (tier) entry.tier = tier;
+    out.push(entry);
+  }
+  return out;
+}
+
+// Envelope metadata wraps the token array for POST /tokens/figma. figma.fileKey
+// requires nothing extra (no additional manifest permission) but guard it
+// anyway — an access error should degrade to null, not throw.
+async function exportVariablesArtifact() {
+  const tokens = await collectResolvedTokens();
+  let fileKey = null;
+  try { fileKey = figma.fileKey || null; } catch (e) { fileKey = null; }
+  return { fileKey: fileKey, exportedAt: new Date().toISOString(), tokens: tokens };
+}
+
 // ─── message bridge to the UI ────────────────────────────────────────────────
 
 // Stable stringify (sorted keys) for cheap change-detection on the auto path.
@@ -614,6 +703,14 @@ figma.ui.onmessage = (msg) => {
     deprecateVariantVariables(msg.tokenIdPrefix)
       .then((r) => figma.ui.postMessage({ type: 'deprecateVariantVariablesDone', count: r.renamed }))
       .catch((err) => figma.ui.postMessage({ type: 'error', message: String(err) }));
+  }
+  else if (msg.type === 'sorb-export-variables') {
+    // "Export variables" action — collects this file's Variables as a
+    // resolved-map artifact; the UI does the POST /tokens/figma (main thread
+    // has no fetch).
+    exportVariablesArtifact()
+      .then((artifact) => figma.ui.postMessage({ type: 'sorb-export-result', ok: true, artifact: artifact }))
+      .catch((err) => figma.ui.postMessage({ type: 'sorb-export-result', ok: false, error: String(err) }));
   }
   else if (msg.type === 'sorb-ui-ready') {
     // UI-requested restore. The eager send at startup can race the iframe load
