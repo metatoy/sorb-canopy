@@ -34,7 +34,7 @@ In the panel:
 - **App URL** — the page to open with the preview, e.g. `http://localhost:5173`.
 - **Storybook URL** — the Storybook base URL, e.g. `http://localhost:6006`.
 - **GitHub file** — the *edit* URL of the token file on the target branch,
-  e.g. `https://github.com/nhunsaker/figree-demo/edit/main/tokens/semantic.json`.
+  e.g. `https://github.com/your-org/your-repo/edit/main/tokens/semantic.json`.
 - The **Tokens** box is prefilled from your Figma Variables; edit freely.
 - **Preview in app →** POSTs the tokens and opens the app with the new id.
 - **Load committed** pulls the live committed set from `GET /tokens/latest`.
