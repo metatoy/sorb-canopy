@@ -927,6 +927,12 @@
         <span class="hint">(wrap each insert in a named frame)</span>
       </label>
 
+      <div class="settings-reset" id="figmaRefSection" style="margin-top:14px;">
+        <button class="secondary" id="figmaExportBtn" type="button">Export variables to bridge</button>
+        <p class="settings-note" style="margin:8px 0 0;">Sends this file&rsquo;s Figma Variables to the bridge, then checks them against your DTCG tokens (flags drift — never overwrites either side).</p>
+        <div class="receipt" id="figmaExportStatus" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
+      </div>
+
       <div class="settings-reset">
         <button class="reset-btn" id="resetBtn" type="button">Reset settings</button>
         <p class="settings-note" style="margin:8px 0 0;">Clears the saved connection (bridge, app, key). You&rsquo;ll reconnect with a new invite.</p>
@@ -986,6 +992,16 @@
         var el = $('status-sb');
         el.className = 'status' + (isErr ? ' err' : '');
         el.innerHTML = html;
+      }
+      // Same receipt-band pattern as setStatus(), scoped to the Settings
+      // "Export variables to bridge" section.
+      function setFigmaExportStatus(html, isErr) {
+        var el = $('figmaExportStatus');
+        if (!el) return;
+        var empty = !html || String(html).trim() === '';
+        var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
+        el.setAttribute('data-state', state);
+        el.innerHTML = empty ? '' : '<span class="receipt-msg">' + html + '</span>';
       }
 
       // ── persisted settings ─────────────────────────────────────────────
@@ -1078,6 +1094,47 @@
           finishReset();        // wipe local + reset UI now (also covers the standalone case)
         };
       })();
+
+      // ── Figma reference pipeline (FLS v0.5.0 P1) ─────────────────────────
+      // "Export variables to bridge": main thread collects this file's
+      // Variables as a resolved-map artifact (sorb-export-result), then the
+      // UI POSTs it to the bridge and immediately checks it against the
+      // committed DTCG tokens. Diffs only FLAG drift — neither side is ever
+      // auto-resolved from this flow.
+      $('figmaExportBtn').onclick = function() {
+        $('figmaExportBtn').disabled = true;
+        setFigmaExportStatus('Collecting Figma Variables…');
+        post('sorb-export-variables');
+      };
+
+      function postFigmaExport(artifact) {
+        var o = trimOrigin();
+        var n = (artifact && artifact.tokens && artifact.tokens.length) || 0;
+        if (!o) { setFigmaExportStatus('Set a bridge origin first (Advanced setup).', true); return; }
+        setFigmaExportStatus(n + ' variable(s) collected — sending to bridge…');
+        bfetch(o + '/tokens/figma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(artifact),
+        }).then(function(res) {
+          if (!res.ok) throw new Error('bridge responded ' + res.status);
+          return bfetch(o + '/verify/figma');
+        }).then(function(res) { return res.json(); })
+        .then(function(body) {
+          if (body && body.error) {
+            setFigmaExportStatus('Exported ' + n + ' — verify unavailable: ' + escHtml(body.error), true);
+            return;
+          }
+          var driftCount = (body.mismatches ? body.mismatches.length : 0) + (body.missingInFigma ? body.missingInFigma.length : 0);
+          if (body.ok) {
+            setFigmaExportStatus('✓ Exported ' + n + ' — matches your DTCG tokens (' + body.matched + '/' + body.checked + ').');
+          } else {
+            setFigmaExportStatus('Exported ' + n + ' — ' + driftCount + ' drift flag(s) vs your DTCG tokens (' + body.matched + '/' + body.checked + ' matched).', true);
+          }
+        }).catch(function(e) {
+          setFigmaExportStatus('Export failed: ' + escHtml(e && e.message), true);
+        });
+      }
 
       // U3 — flat-Settings inline Test (reuses testConnection; §3 honesty labels).
       function wireSettingsTest(inputId, btnId, resultId, kind) {
@@ -1205,6 +1262,10 @@
           setSbStatus('✓ Inserted ' + n + ' component' + (n === 1 ? '' : 's') + ' into the canvas.');
         } else if (msg.type === 'sorb-verify') {
           verifyInsert(msg.storyId, msg.bbox, msg.meta);
+        } else if (msg.type === 'sorb-export-result') {
+          if ($('figmaExportBtn')) $('figmaExportBtn').disabled = false;
+          if (!msg.ok) { setFigmaExportStatus('Export failed: ' + escHtml(msg.error), true); }
+          else postFigmaExport(msg.artifact);
         } else if (msg.type === 'sorb-restore') {
           hydrateFromRestore(msg.data);   // durable settings from clientStorage
           syncSettingsInputs();

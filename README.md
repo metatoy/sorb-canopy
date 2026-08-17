@@ -34,7 +34,7 @@ In the panel:
 - **App URL** — the page to open with the preview, e.g. `http://localhost:5173`.
 - **Storybook URL** — the Storybook base URL, e.g. `http://localhost:6006`.
 - **GitHub file** — the *edit* URL of the token file on the target branch,
-  e.g. `https://github.com/nhunsaker/figree-demo/edit/main/tokens/semantic.json`.
+  e.g. `https://github.com/your-org/your-repo/edit/main/tokens/semantic.json`.
 - The **Tokens** box is prefilled from your Figma Variables; edit freely.
 - **Preview in app →** POSTs the tokens and opens the app with the new id.
 - **Load committed** pulls the live committed set from `GET /tokens/latest`.
@@ -65,6 +65,25 @@ In the panel:
 > `networkAccess.allowedDomains` (add your bridge domain there; `["*"]` is
 > allowed during development). The page must be HTTPS-reachable if you open
 > the app over HTTPS — same mixed-content rule as the provider's `origin`.
+
+## Figma reference pipeline (Settings → Export variables to bridge)
+
+A second, separate export path from **Sync Variables** (which goes
+code → Figma). This one goes **Figma → the bridge**, so you can check
+whether what's actually in this file's Variables still matches your
+committed DTCG tokens:
+
+- **Export variables to bridge** collects this file's Variables in the same
+  shape `GET /tokens/resolved` uses (`{ id, cssVar, value, tier, type }`) and
+  `POST`s it to the bridge at `POST /tokens/figma`.
+- The plugin then immediately calls `GET /verify/figma`, which diffs the
+  export against the resolved DTCG map by `cssVar` and reports mismatches,
+  tokens missing from the Figma file, and Figma variables not (yet) tracked
+  as tokens.
+- This is a **read-only reference check** — it never writes back to either
+  side. The DTCG token source stays the source of truth; the Figma export is
+  a mirror. (Contrast with **Sync Variables**, which does write Figma
+  Variables from the token source.)
 
 ## Token mapping
 
