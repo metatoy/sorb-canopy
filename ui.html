@@ -693,6 +693,10 @@
           <div class="ct">Invite a developer<span class="arw">&rarr;</span></div>
           <div class="cc">Send your dev a short message. They run one command and send you an invite.</div>
         </button>
+        <button class="card sec" id="pathOrgKey">
+          <div class="ct">Connect with an org key<span class="arw">&rarr;</span></div>
+          <div class="cc">Public beta. Paste your <code>sorb_pk_&hellip;</code> org key — no invite, no manual setup.</div>
+        </button>
         <button class="card sec" id="pathAdvanced">
           <div class="ct">Advanced setup<span class="arw">&rarr;</span></div>
           <div class="cc">Enter the bridge, app, and key by hand. For technical users.</div>
@@ -754,6 +758,28 @@
         <button class="redeem-cta" id="inviteRedeemBtn">Redeem invite</button>
         <div class="receipt" id="inviteReturnReceipt" data-state="empty" role="status" aria-live="polite" aria-atomic="true" style="margin-top:14px;"></div>
       </div>
+    </div>
+
+    <!-- ── CONNECT-WITH-AN-ORG-KEY FLOW (P3 · account-optional org key) ────
+         Additive sibling of the handshake + local-bridge paths — resolves an
+         org publishable key against sorb-cloud's /api/orgs/resolve (same
+         contract sorb-leaf's connection.js consumes) and applies the returned
+         bridge connection. Never touches the handshake or blank-key paths. -->
+    <div class="flow" id="orgKeyFlow">
+      <button class="flow-back" id="orgKeyBack">&larr; Back</button>
+      <div class="flow-p">Paste your org key. Sorb looks up your org&rsquo;s bridge and connects — no invite, no manual setup.</div>
+
+      <label for="orgKeyInput" class="hint" style="display:block;margin-bottom:4px;">Org key</label>
+      <input id="orgKeyInput" aria-label="Org publishable key" placeholder="sorb_pk_&hellip;" autocomplete="off" spellcheck="false" />
+
+      <label for="orgKeyCloudBase" class="hint" style="display:block;margin:10px 0 4px;">Cloud base URL <span class="hint">(only change this if your org uses a different Sorb Cloud)</span></label>
+      <input id="orgKeyCloudBase" aria-label="Sorb Cloud base URL" placeholder="https://app.sorbcloud.com" />
+
+      <button class="redeem-cta" id="orgKeyConnectBtn">Connect</button>
+
+      <div class="receipt" id="orgKeyReceipt" data-state="empty" role="status" aria-live="polite" aria-atomic="true" style="margin-top:14px;"></div>
+
+      <div class="redeem-hint">Don&rsquo;t have an org key? Go back and choose &ldquo;Paste an invite&rdquo; or &ldquo;Advanced setup&rdquo; instead.</div>
     </div>
 
     <!-- ── TABS (Tokens / Components / Settings) ─────────────────────────── -->
@@ -1017,6 +1043,11 @@
       // Part 8 · handshake — set once a developer invite has been pasted; drives the
       // stateful intro primary (unset → "Invite a developer" leads; set → "Paste" leads).
       LS.hasHandshake       = 'sorb.hasHandshake';
+      // P3 · org-key connect — last-used cloud base + a flag distinguishing an
+      // org-key connection from a handshake/local one (informational only;
+      // both set LS.hasHandshake so boot-state routing is unchanged).
+      LS.orgCloudBase       = 'sorb.orgCloudBase';
+      LS.orgKeyConnected    = 'sorb.orgKeyConnected';
       // Settings store. The Figma plugin iframe is SANDBOXED — localStorage
       // access THROWS there (verified live 2026-08-11), so an in-memory map is
       // the source of truth. localStorage is a best-effort mirror so the
@@ -1050,6 +1081,7 @@
       var DEFAULT_APP    = 'http://localhost:5173';
       var DEFAULT_GH     = 'https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json';
       var DEFAULT_SB     = 'http://localhost:6006';
+      var DEFAULT_CLOUD_BASE = 'https://app.sorbcloud.com';   // P3 org-key resolve default
 
       // ── hosted demo path (U4) — filled at ship/deploy time, NEVER committed ──────
       // DEMO_PK: read-only sorb_pk_ from Keychain `sorb-publish-only` (safe to ship —
@@ -1373,6 +1405,7 @@
         $('introScreen').classList.remove('show');
         $('pasteFlow').classList.remove('show');
         $('inviteFlow').classList.remove('show');
+        $('orgKeyFlow').classList.remove('show');
       }
       function hideAllViews() {
         $('view-tokens').style.display = 'none';
@@ -1490,10 +1523,25 @@
         updateCta();
       }
 
+      function showOrgKeyFlow() {
+        hideAllScreens();
+        $('tabs').hidden = true;
+        hideAllViews();
+        hideConnPill();
+        setHeaderLabel('Connect with an org key');
+        var r = $('orgKeyReceipt'); r.setAttribute('data-state', 'empty'); r.innerHTML = '';
+        $('orgKeyInput').value = '';
+        $('orgKeyCloudBase').value = lsGet(LS.orgCloudBase) || DEFAULT_CLOUD_BASE;
+        $('orgKeyFlow').classList.add('show');
+        try { $('orgKeyInput').focus(); } catch (e) {}
+      }
+
       $('pathPasteInvite').onclick = showPasteFlow;
       $('pathInviteDev').onclick   = showInviteFlow;
+      $('pathOrgKey').onclick      = showOrgKeyFlow;
       $('pasteBack').onclick  = showIntro;
       $('inviteBack').onclick = showIntro;
+      $('orgKeyBack').onclick = showIntro;
 
       // "Advanced setup" — the existing guided Connect wizard (technical users).
       $('pathAdvanced').onclick = function() {
@@ -1568,6 +1616,72 @@
       }
       $('redeemBtn').onclick       = function() { redeemFrom($('inviteInput'),       $('redeemReceipt')); };
       $('inviteRedeemBtn').onclick = function() { redeemFrom($('inviteReturnInput'), $('inviteReturnReceipt')); };
+
+      // ── P3 — "Connect with an org key" (account-optional org connection) ──
+      // Mirrors sorb-leaf/src/connection.js's resolveOrgConnection: a single
+      // GET against sorb-cloud's org-resolve endpoint, keyed by the org's
+      // publishable key, returns the effective bridge connection. Non-2xx /
+      // network error / malformed payload → null → change nothing, show an
+      // error. Purely additive — never touches the handshake or blank-key
+      // local-bridge paths (redeemFrom / discoverConnectBtn above).
+      function resolveOrgKey(orgKey, cloudBase) {
+        var base = String(cloudBase || DEFAULT_CLOUD_BASE).trim().replace(/\/$/, '');
+        var url = base + '/api/orgs/resolve?key=' + encodeURIComponent(orgKey);
+        var ctrl = new AbortController();
+        var tid = setTimeout(function() { ctrl.abort(); }, 8000);
+        return fetch(url, { signal: ctrl.signal })
+          .then(function(res) {
+            clearTimeout(tid);
+            if (!res || !res.ok) return null;
+            return res.json().catch(function(e) { void e; return null; });
+          })
+          .then(function(data) {
+            if (!data || typeof data !== 'object') return null;
+            if (typeof data.bridgeUrl !== 'string' || data.bridgeUrl.trim() === '') return null;
+            return {
+              bridgeMode: typeof data.bridgeMode === 'string' ? data.bridgeMode : 'C',
+              bridgeUrl: data.bridgeUrl.trim(),
+              orgId: typeof data.orgId === 'string' ? data.orgId : null,
+            };
+          })
+          .catch(function(e) { void e; clearTimeout(tid); return null; });
+      }
+
+      $('orgKeyConnectBtn').onclick = function() {
+        var receiptEl = $('orgKeyReceipt');
+        var key = $('orgKeyInput').value.trim();
+        var cloudBase = $('orgKeyCloudBase').value.trim() || DEFAULT_CLOUD_BASE;
+        if (!key) { redeemError(receiptEl, 'Paste your org key first.'); return; }
+        $('orgKeyConnectBtn').disabled = true;
+        receiptEl.setAttribute('data-state', 'neutral');
+        receiptEl.innerHTML = 'Connecting&hellip;';
+        resolveOrgKey(key, cloudBase).then(function(resolved) {
+          $('orgKeyConnectBtn').disabled = false;
+          if (!resolved) {
+            redeemError(receiptEl, "Couldn&rsquo;t connect with that org key — check the key and cloud base URL, then try again.");
+            return;   // failure — nothing changed
+          }
+          // success — apply the resolved connection, same fields the handshake
+          // path sets (origin + apiKey), plus the org-key-specific bookkeeping.
+          lsSet(LS.origin, resolved.bridgeUrl);  $('origin').value = resolved.bridgeUrl;
+          lsSet(LS.apiKey, key);                 $('apiKey').value = key;   // → activeKey() on the non-demo branch
+          lsSet(LS.demo, '');                                                // real bridge, not the demo pk
+          lsSet(LS.orgCloudBase, cloudBase);
+          lsSet(LS.orgKeyConnected, 'true');
+          lsSet(LS.hasHandshake, 'true');        // connected-state flag (drives boot routing)
+          if (!lsGet(LS.app)) { lsSet(LS.app, DEFAULT_APP); $('appUrl').value = DEFAULT_APP; }
+          receiptEl.setAttribute('data-state', 'ok');
+          receiptEl.innerHTML = 'Connected &mdash; you&rsquo;re set. Opening your tokens&hellip;';
+          connStartPoll();
+          autoVerifyFailedAt = 0;
+          attemptInitialVerify(resolved.bridgeUrl).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
+          setTimeout(function() {
+            finishOnboarding('orgkey');            // sets onb + path, showMain()
+            try { setStatus('Connected &mdash; you&rsquo;re set.'); } catch (e) {}
+            try { $('committed').click(); } catch (e) {}   // load committed tokens from the bridge
+          }, 700);
+        });
+      };
 
       // ── "Invite a developer" — copyable request message ──────────────────
       // Keep this in sync with the visible #inviteMsg markup above.
