@@ -177,6 +177,10 @@
       .adv[open] .adv-sum::before { transform:rotate(90deg); }
       .adv-hint { font-weight:400; color:var(--soft); font-size:11px; }
       .adv-body { padding:2px 12px 12px; border-top:1px solid var(--line-2); }
+      .adv-env { display:flex; align-items:center; gap:12px; padding:10px 0 4px; font-size:12px; color:var(--fg-2); }
+      .adv-env-lbl { font-weight:600; color:var(--fg); }
+      .adv-env-opt { display:flex; align-items:center; gap:5px; cursor:pointer; }
+      .adv-env-hint { font-size:11px; color:var(--fg-2); padding:0 0 6px; }
 
       /* ── primary CTA + secondary actions (tokens foot) ───────────────── */
       .foot { border-top:1px solid var(--line); padding:11px 13px 12px; background:var(--surface);
@@ -725,6 +729,12 @@
       <details class="adv" id="introAdvanced">
         <summary class="adv-sum">Advanced setup <span class="adv-hint">— self-host, invites, manual bridge</span></summary>
         <div class="adv-body">
+          <div class="adv-env">
+            <span class="adv-env-lbl">Services</span>
+            <label class="adv-env-opt"><input type="radio" name="cloudEnv" value="https://app.sorbcloud.com"> Production</label>
+            <label class="adv-env-opt"><input type="radio" name="cloudEnv" value="https://staging.app.sorbcloud.com"> Staging</label>
+          </div>
+          <div class="adv-env-hint">Which Sorb cloud the &ldquo;Sign in&rdquo; + org-key paths talk to. Leave on Production unless you&rsquo;re testing.</div>
           <div class="cards" id="introAdvCards" style="margin-top:10px;">
             <button class="card sec accent" id="pathPasteInvite">
               <div class="ct">Paste an invite from your developer<span class="arw">&rarr;</span></div>
@@ -1112,6 +1122,7 @@
       // waiting) survives; and the last poll cloud base, mirroring orgCloudBase.
       LS.pairingCode        = 'sorb.pairingCode';
       LS.pairingCloudBase   = 'sorb.pairingCloudBase';
+      LS.cloudBase          = 'sorb.cloudBase';   // Advanced "Services" env toggle (prod default | staging)
       // Settings store. The Figma plugin iframe is SANDBOXED — localStorage
       // access THROWS there (verified live 2026-08-11), so an in-memory map is
       // the source of truth. localStorage is a best-effort mirror so the
@@ -1146,6 +1157,7 @@
       var DEFAULT_GH     = 'https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json';
       var DEFAULT_SB     = 'http://localhost:6006';
       var DEFAULT_CLOUD_BASE = 'https://app.sorbcloud.com';   // P3 org-key resolve default
+      var STAGING_CLOUD_BASE = 'https://staging.app.sorbcloud.com'; // Advanced "Services" toggle
 
       // ── hosted demo path (U4) — filled at ship/deploy time, NEVER committed ──────
       // DEMO_PK: read-only sorb_pk_ from Keychain `sorb-publish-only` (safe to ship —
@@ -1596,7 +1608,7 @@
         setHeaderLabel('Connect with an org key');
         var r = $('orgKeyReceipt'); r.setAttribute('data-state', 'empty'); r.innerHTML = '';
         $('orgKeyInput').value = '';
-        $('orgKeyCloudBase').value = lsGet(LS.orgCloudBase) || DEFAULT_CLOUD_BASE;
+        $('orgKeyCloudBase').value = lsGet(LS.orgCloudBase) || activeCloudBase();
         $('orgKeyFlow').classList.add('show');
         try { $('orgKeyInput').focus(); } catch (e) {}
       }
@@ -1729,8 +1741,15 @@
           });
       }
 
+      // Active Sorb cloud/services base — Production (default) or Staging, per the
+      // Advanced "Services" toggle. Guarded to the two known bases.
+      function activeCloudBase() {
+        var b = lsGet(LS.cloudBase);
+        return b === STAGING_CLOUD_BASE ? STAGING_CLOUD_BASE : DEFAULT_CLOUD_BASE;
+      }
+
       function signInUrlFor(code) {
-        return DEFAULT_CLOUD_BASE + '/plugin-connect?code=' + encodeURIComponent(code);
+        return activeCloudBase() + '/plugin-connect?code=' + encodeURIComponent(code);
       }
 
       // Main thread validates the origin before calling figma.openExternal (main-thread-only
@@ -1765,26 +1784,42 @@
       }
 
       $('pathSignIn').onclick = function() {
+        var base = activeCloudBase();
         var code = genPairingCode();
         lsSet(LS.pairingCode, code);
-        lsSet(LS.pairingCloudBase, DEFAULT_CLOUD_BASE);
+        lsSet(LS.pairingCloudBase, base);
         showSignInFlow();
         signInStartedAt = Date.now();
         stopSignInPoll();
         // Register pending → open browser → poll (the P1 contract sequence).
-        signInPostStart(code, DEFAULT_CLOUD_BASE, function(ok) {
+        signInPostStart(code, base, function(ok) {
           void ok; // proceed regardless; the page create-and-mints + the 15s grace cover a /start miss
           openExternalSignIn(code);
-          signInPollOnce(code, DEFAULT_CLOUD_BASE);
+          signInPollOnce(code, base);
         });
       };
       $('signInReopenBtn').onclick = function() {
+        var base = activeCloudBase();
         var code = lsGet(LS.pairingCode);
-        if (!code) { code = genPairingCode(); lsSet(LS.pairingCode, code); lsSet(LS.pairingCloudBase, DEFAULT_CLOUD_BASE); }
+        if (!code) { code = genPairingCode(); lsSet(LS.pairingCode, code); lsSet(LS.pairingCloudBase, base); }
         openExternalSignIn(code);
       };
       $('signInCancelBtn').onclick = function() { stopSignInPoll(); showIntro(); };
       $('signInBack').onclick      = function() { stopSignInPoll(); showIntro(); };
+
+      // Advanced "Services" toggle — reflect the stored env + persist on change.
+      (function initEnvToggle() {
+        var radios = document.getElementsByName('cloudEnv');
+        var cur = activeCloudBase();
+        for (var i = 0; i < radios.length; i++) {
+          radios[i].checked = (radios[i].value === cur);
+          radios[i].addEventListener('change', function() {
+            if (this.checked) {
+              lsSet(LS.cloudBase, this.value === STAGING_CLOUD_BASE ? STAGING_CLOUD_BASE : DEFAULT_CLOUD_BASE);
+            }
+          });
+        }
+      })();
 
       $('pathPasteInvite').onclick = showPasteFlow;
       $('pathInviteDev').onclick   = showInviteFlow;
