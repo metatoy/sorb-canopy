@@ -752,7 +752,9 @@ figma.ui.onmessage = (msg) => {
     // UI iframe has no such API), so this is its sole caller. Validate before
     // opening: only ever send the user to the trusted Sorb Cloud sign-in host.
     const url = typeof msg.url === 'string' ? msg.url : '';
-    if (url.indexOf('https://app.sorbcloud.com/') === 0) {
+    const trusted = url.indexOf('https://app.sorbcloud.com/') === 0 ||
+                    url.indexOf('https://staging.app.sorbcloud.com/') === 0;
+    if (trusted) {
       try { figma.openExternal(url); } catch (e) { figma.notify('Could not open the browser: ' + String(e)); }
     } else {
       figma.notify('Blocked an untrusted sign-in link.');

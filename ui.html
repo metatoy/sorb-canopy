@@ -1670,7 +1670,7 @@
 
       function signInFailed(reason) {
         stopSignInPoll();
-        signInSetStatus(reason || 'Sign-in didn&rsquo;t complete. Try again.', true);
+        signInSetStatus(reason || 'Sign-in didn’t complete. Try again.', true);
       }
 
       function signInReady(data) {
@@ -1684,7 +1684,7 @@
         lsSet(LS.orgKeyConnected, 'true');
         lsSet(LS.hasHandshake, 'true');       // connected-state flag (drives boot routing)
         if (!lsGet(LS.app)) { lsSet(LS.app, DEFAULT_APP); $('appUrl').value = DEFAULT_APP; }
-        signInSetStatus('Connected — you&rsquo;re set. Opening your tokens&hellip;', false);
+        signInSetStatus('Connected — you’re set. Opening your tokens…', false);
         connStartPoll();
         autoVerifyFailedAt = 0;
         attemptInitialVerify(bridgeUrl).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
@@ -1779,7 +1779,7 @@
         hideAllViews();
         hideConnPill();
         setHeaderLabel('Sign in to connect');
-        signInSetStatus('Waiting for you to sign in in your browser&hellip;', false);
+        signInSetStatus('Waiting for you to sign in in your browser…', false);
         $('signInFlow').classList.add('show');
       }
 
