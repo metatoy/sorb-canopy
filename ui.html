@@ -121,6 +121,23 @@
       .card.sec.accent .ct { color:var(--blaze-ink); }
       .card.sec.accent .arw { color:var(--blaze); }
 
+      /* ── P2 account-front-door · demoted "paste an org key" fallback ───── */
+      .orgkey-link { display:block; width:100%; text-align:center; background:none; border:0;
+        margin-top:10px; padding:4px; font-size:11px; font-weight:600; color:var(--soft);
+        cursor:pointer; font-family:inherit; }
+      .orgkey-link:hover { color:var(--blaze-ink); text-decoration:underline; }
+
+      /* ── P2 account-front-door · sign-in→poll waiting panel ─────────────── */
+      .signin-wait { display:flex; align-items:center; gap:8px; margin-top:6px; padding:11px 12px;
+        border:1px solid var(--line); border-radius:10px; background:var(--surface-2); font-size:12px; }
+      .signin-spin { width:14px; height:14px; border-radius:50%; flex:none;
+        border:2px solid var(--blaze-bg); border-top-color:var(--blaze);
+        animation: signinSpin .8s linear infinite; }
+      @keyframes signinSpin { to { transform:rotate(360deg); } }
+      .signin-wait-text { flex:1; min-width:0; color:var(--ink-2); }
+      .signin-actions { display:flex; gap:8px; margin-top:12px; }
+      .signin-actions button { flex:1; }
+
       /* ── Part 8 · redeem / invite flow screens (full-height front doors) ── */
       .flow { display:none; flex-direction:column; padding:18px 20px 16px; min-height:520px; }
       .flow.show { display:flex; }
@@ -407,7 +424,9 @@
       #tkHovercard {
         position: fixed; z-index: 9999;
         width: 232px; padding: 8px 10px;
-        background: var(--ink); color: var(--snow);
+        /* slightly transparent (+ blur) so content underneath stays faintly visible; --ink is #211F1C */
+        background: rgba(33, 31, 28, .85); color: var(--snow);
+        backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
         border-radius: 7px; border: 1px solid var(--ink-2);
         font-size: 11px; line-height: 1.5;
         pointer-events: none;
@@ -677,43 +696,62 @@
         <div class="feat"><div class="fl">See it live</div><div class="fc">Watch it land in the running app.</div></div>
         <div class="feat"><div class="fl">Verify</div><div class="fc">Confirm it before you merge.</div></div>
       </div>
-      <!-- Front door (Part 8): designer-default, invite-first. The stateful primary is
-           driven by the sorb.hasHandshake flag in applyIntroState():
-             · first run (flag unset)  → "Invite a developer" = solid-blaze primary,
-               "Paste an invite" = outline-blaze secondary (.card.sec.accent).
-             · after a handshake pasted → "Paste an invite" promotes to primary.
-           "Advanced setup" (Connect wizard) + "Try the live demo" stay demoted. When the
-           hosted demo injects at ship, the DEMO_ENABLED block promotes it above all. -->
+      <!-- Front door (P2 account-required front-door, 2026-08-26): account-only is the
+           ONE promoted path — "Sign in to connect" opens the browser at
+           app.sorbcloud.com/plugin-connect and the plugin auto-connects via a
+           device-code/pairing-poll (Figma plugins can't take an OAuth redirect into the
+           sandbox). "Paste an org key" is a small demoted fallback (existing keys / CI /
+           headless). Self-host (invite-a-developer / paste-a-handshake / manual bridge /
+           local-bridge discovery) moves under "Advanced setup" — still fully functional,
+           just buried. When the hosted demo injects at ship, the DEMO_ENABLED block
+           promotes #pathDemo above all (unchanged). -->
       <div class="cards" id="introCards">
-        <button class="card sec accent" id="pathPasteInvite">
-          <div class="ct">Paste an invite from your developer<span class="arw">&rarr;</span></div>
-          <div class="cc">Your dev sends one code. Paste it and you&rsquo;re connected — no servers, URLs, or keys.</div>
-        </button>
-        <button class="card pri" id="pathInviteDev">
-          <div class="ct">Invite a developer<span class="arw">&rarr;</span></div>
-          <div class="cc">Send your dev a short message. They run one command and send you an invite.</div>
-        </button>
-        <button class="card sec" id="pathOrgKey">
-          <div class="ct">Connect with an org key<span class="arw">&rarr;</span></div>
-          <div class="cc">Public beta. Paste your <code>sorb_pk_&hellip;</code> org key — no invite, no manual setup.</div>
-        </button>
-        <button class="card sec" id="pathAdvanced">
-          <div class="ct">Advanced setup<span class="arw">&rarr;</span></div>
-          <div class="cc">Enter the bridge, app, and key by hand. For technical users.</div>
+        <button class="card pri" id="pathSignIn">
+          <div class="ct">Sign in to connect<span class="arw">&rarr;</span></div>
+          <div class="cc">Opens your browser to sign in. Sorb connects automatically — no servers, URLs, or keys.</div>
         </button>
         <button class="card coming" id="pathDemo" disabled tabindex="-1" aria-disabled="true">
           <div class="ct">Try the live demo<span class="soon">Coming soon</span></div>
           <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
         </button>
       </div>
-      <!-- Local-bridge auto-discovery (2026-08-11): if a bridge is already
-           running on this computer (the dev-is-the-designer case), offer a
-           one-click connect — zero paste. Hidden until the probe hits. -->
-      <div class="discover" id="discoverBanner" style="display:none">
-        <span class="disc-dot"></span>
-        <span class="disc-text">Found a Sorb bridge running on this computer.</span>
-        <button class="disc-btn" id="discoverConnectBtn" type="button">Connect</button>
-      </div>
+
+      <button class="orgkey-link" id="pathOrgKey" type="button">Have an org key? Paste it instead &rarr;</button>
+
+      <!-- "Advanced setup" (2026-08-26): buries the self-host paths — invite a
+           developer, paste a handshake, manual bridge, and local-bridge discovery.
+           Handlers bind by ID below, unchanged — moving these cards here is DOM
+           placement + styling only, no handler rewiring. -->
+      <details class="adv" id="introAdvanced">
+        <summary class="adv-sum">Advanced setup <span class="adv-hint">— self-host, invites, manual bridge</span></summary>
+        <div class="adv-body">
+          <div class="cards" id="introAdvCards" style="margin-top:10px;">
+            <button class="card sec accent" id="pathPasteInvite">
+              <div class="ct">Paste an invite from your developer<span class="arw">&rarr;</span></div>
+              <div class="cc">Your dev sends one code. Paste it and you&rsquo;re connected — no servers, URLs, or keys.</div>
+            </button>
+            <button class="card sec" id="pathInviteDev">
+              <div class="ct">Invite a developer<span class="arw">&rarr;</span></div>
+              <div class="cc">Send your dev a short message. They run one command and send you an invite.</div>
+            </button>
+            <button class="card sec" id="pathAdvanced">
+              <div class="ct">Manual bridge setup<span class="arw">&rarr;</span></div>
+              <div class="cc">Enter the bridge, app, and key by hand. For technical users.</div>
+            </button>
+          </div>
+          <!-- Local-bridge auto-discovery (2026-08-11; scoped to Advanced 2026-08-26):
+               if a bridge is already running on this computer (the dev-is-the-designer
+               case), offer a one-click connect — zero paste. The probe only runs once
+               this disclosure is opened (see the 'toggle' binding below), never
+               auto-fires from showIntro() anymore. Hidden until the probe hits. -->
+          <div class="discover" id="discoverBanner" style="display:none">
+            <span class="disc-dot"></span>
+            <span class="disc-text">Found a Sorb bridge running on this computer.</span>
+            <button class="disc-btn" id="discoverConnectBtn" type="button">Connect</button>
+          </div>
+        </div>
+      </details>
+
       <div class="links">
         <a href="https://metatoy.com/sorb" target="_blank" rel="noopener">Learn more</a>
         <a href="https://metatoy.com/sorb/docs" target="_blank" rel="noopener">Docs</a>
@@ -779,7 +817,28 @@
 
       <div class="receipt" id="orgKeyReceipt" data-state="empty" role="status" aria-live="polite" aria-atomic="true" style="margin-top:14px;"></div>
 
-      <div class="redeem-hint">Don&rsquo;t have an org key? Go back and choose &ldquo;Paste an invite&rdquo; or &ldquo;Advanced setup&rdquo; instead.</div>
+      <div class="redeem-hint">Don&rsquo;t have an org key? Go back and choose &ldquo;Sign in to connect&rdquo; or &ldquo;Advanced setup&rdquo; instead.</div>
+    </div>
+
+    <!-- ── SIGN-IN (P2 · one-click browser sign-in, device-code pairing-poll) ──
+         Primary account-only front-door path: opens app.sorbcloud.com/plugin-connect
+         in the browser (via code.js figma.openExternal) and polls
+         GET /api/plugin-connect/poll?code=… until the browser side finishes. -->
+    <div class="flow" id="signInFlow">
+      <button class="flow-back" id="signInBack">&larr; Back</button>
+      <div class="flow-p">We opened your browser to sign in. Finish there and Sorb connects automatically — nothing to paste.</div>
+
+      <div class="signin-wait">
+        <span class="signin-spin" aria-hidden="true"></span>
+        <span class="signin-wait-text" id="signInWaitStatus">Waiting for you to sign in in your browser&hellip;</span>
+      </div>
+
+      <div class="signin-actions">
+        <button class="secondary" id="signInReopenBtn" type="button">Reopen the browser</button>
+        <button class="ghost" id="signInCancelBtn" type="button">Cancel</button>
+      </div>
+
+      <div class="receipt" id="signInReceipt" data-state="empty" role="status" aria-live="polite" aria-atomic="true" style="margin-top:14px;"></div>
     </div>
 
     <!-- ── TABS (Tokens / Components / Settings) ─────────────────────────── -->
@@ -1040,14 +1099,19 @@
       LS.lastComponentCount = 'sorb.lastComponentCount';
       LS.lastTokenIds       = 'sorb.lastTokenIds';
       LS.lastTokenSnapshot  = 'sorb.lastTokenSnapshot';
-      // Part 8 · handshake — set once a developer invite has been pasted; drives the
-      // stateful intro primary (unset → "Invite a developer" leads; set → "Paste" leads).
+      // Part 8 · handshake — set once a developer invite has been pasted (Advanced-only
+      // now; the front-door primary is account sign-in, not this flag).
       LS.hasHandshake       = 'sorb.hasHandshake';
       // P3 · org-key connect — last-used cloud base + a flag distinguishing an
       // org-key connection from a handshake/local one (informational only;
       // both set LS.hasHandshake so boot-state routing is unchanged).
       LS.orgCloudBase       = 'sorb.orgCloudBase';
       LS.orgKeyConnected    = 'sorb.orgKeyConnected';
+      // P2 account-front-door — the current/last pairing code for the
+      // sign-in→poll flow, persisted so a re-poll (e.g. plugin reopened while
+      // waiting) survives; and the last poll cloud base, mirroring orgCloudBase.
+      LS.pairingCode        = 'sorb.pairingCode';
+      LS.pairingCloudBase   = 'sorb.pairingCloudBase';
       // Settings store. The Figma plugin iframe is SANDBOXED — localStorage
       // access THROWS there (verified live 2026-08-11), so an in-memory map is
       // the source of truth. localStorage is a best-effort mirror so the
@@ -1262,6 +1326,8 @@
       var resolvedGraph   = null;   // raw array from GET /tokens/resolved (per-token .components; diff blast-radius)
       var resolvedMap     = {};     // id → { tier, type } derived from resolvedGraph (tier sort + type swatch)
       var hcVisible       = false;  // provenance hovercard currently shown?
+      var hcTimer         = null;   // dwell timer — card only shows after HC_DWELL_MS of continuous hover
+      var HC_DWELL_MS     = 4000;   // require a 4s intentional dwell before the hovercard appears
       var graftOpen       = false;  // graft picker expanded?
       var lastGraftPlan   = null;   // last /graft/plan response, cached for Apply
       var figmaUserName   = null;   // set once from the code.js figmaUser message (U3 · F8)
@@ -1406,6 +1472,7 @@
         $('pasteFlow').classList.remove('show');
         $('inviteFlow').classList.remove('show');
         $('orgKeyFlow').classList.remove('show');
+        $('signInFlow').classList.remove('show');
       }
       function hideAllViews() {
         $('view-tokens').style.display = 'none';
@@ -1413,23 +1480,10 @@
         $('view-settings').style.display = 'none';
       }
 
-      // Stateful primary: unset flag → "Invite a developer" leads (solid blaze, on top);
-      // set → "Paste an invite" leads. When the hosted demo is live the DEMO_ENABLED block
-      // owns the ordering, so this becomes a no-op.
-      function applyIntroState() {
-        if (typeof DEMO_ENABLED !== 'undefined' && DEMO_ENABLED) return;
-        var paste = $('pathPasteInvite'), invite = $('pathInviteDev');
-        if (!paste || !invite) return;
-        if (lsGet(LS.hasHandshake) === 'true') {
-          paste.className  = 'card pri';
-          invite.className = 'card sec accent';
-          if (paste.parentNode) paste.parentNode.insertBefore(paste, invite);   // paste on top
-        } else {
-          invite.className = 'card pri';
-          paste.className  = 'card sec accent';
-          if (invite.parentNode) invite.parentNode.insertBefore(invite, paste); // invite on top
-        }
-      }
+      // NB: the old applyIntroState() (paste↔invite stateful-primary juggling) is
+      // retired — account sign-in is now the single static promoted path, and the
+      // demoted invite/paste cards live inside "Advanced setup" with a fixed order.
+      // (DEMO_ENABLED, below, still owns its own promotion of #pathDemo unchanged.)
 
       // The connection/verify pill only makes sense once you're connected, so it
       // is hidden on the non-app screens and shown only in the main app view.
@@ -1445,19 +1499,21 @@
 
       function showIntro() {
         hideAllScreens();
-        applyIntroState();
         $('introScreen').classList.add('show');
         $('tabs').hidden = true;
         hideAllViews();
         hideConnPill();
         setHeaderLabel('Welcome to Sorb — choose a path to get started.');
-        discoverLocalBridge();
+        // NB: no discoverLocalBridge() call here anymore — the local-bridge probe is
+        // the loudest no-account leak (2026-08-26 direction), so it now only runs when
+        // the "Advanced setup" disclosure is opened (bound to its 'toggle' below).
       }
 
-      // ── Local-bridge auto-discovery (front door) ───────────────────────
+      // ── Local-bridge auto-discovery (Advanced-only, front door) ────────
       // The dev-is-the-designer case: a `sorb dev` bridge already running on
       // THIS computer means we can connect with one click — no invite, no
-      // paste. Probes the loopback candidates' /health; first hit wins.
+      // paste. Probes the loopback candidates' /health; first hit wins. Runs
+      // ONLY when "Advanced setup" is opened (never auto-fires from showIntro()).
       var DISCOVER_CANDIDATES = ['http://127.0.0.1:7777', 'http://localhost:7777'];
       var discoveredOrigin = null;
       function discoverLocalBridge() {
@@ -1474,10 +1530,19 @@
           var found = null;
           for (var i = 0; i < hits.length; i++) { if (hits[i]) { found = hits[i]; break; } }
           if (!found) return;
-          // Still on the intro? (probe is async — the user may have moved on)
+          // Still on the intro, with Advanced still open? (probe is async — the user
+          // may have moved on or collapsed the disclosure.)
+          var adv = $('introAdvanced');
           if (!$('introScreen').classList.contains('show')) return;
+          if (adv && !adv.open) return;
           discoveredOrigin = found;
           banner.style.display = '';
+        });
+      }
+      var introAdv = $('introAdvanced');
+      if (introAdv) {
+        introAdv.addEventListener('toggle', function() {
+          if (introAdv.open) discoverLocalBridge();
         });
       }
       $('discoverConnectBtn').onclick = function() {
@@ -1536,6 +1601,191 @@
         try { $('orgKeyInput').focus(); } catch (e) {}
       }
 
+      // ── P2 — "Sign in to connect" (account-only front door, device-code pairing-poll) ──
+      // Figma plugins can't take an OAuth redirect into the sandbox iframe, so this uses
+      // the standard device-code pattern: generate a high-entropy pairing code, open the
+      // browser to app.sorbcloud.com/plugin-connect?code=… (via code.js figma.openExternal,
+      // main-thread only), then poll GET /api/plugin-connect/poll?code=… until the browser
+      // side finishes (or fails/expires/rate-limits). See sorb-cloud's P1 poll contract:
+      //   200 { status:'pending' }                                → keep polling
+      //   200 { status:'ready', bridgeUrl, apiKey, orgId }        → connect, stop (single-use)
+      //   200 { status:'error', reason }                          → failed, stop, show error
+      //   404 { status:'not_found' }                              → expired/unknown, stop
+      //   400 { error:'invalid_request' }                         → bad code
+      //   429 { error:'rate_limited', retryAfterMs }              → back off
+      var SIGNIN_POLL_MS = 2000;
+      var SIGNIN_TIMEOUT_MS = 5 * 60 * 1000;   // ~5 min, matches the pairing code's server TTL
+      var signInPollTimer = null;
+      var signInPollAbort = null;
+      var signInStartedAt = 0;
+
+      // High-entropy pairing code, [A-Za-z0-9_-]{20,128} (server guard). Prefer real
+      // randomness (crypto.getRandomValues — NOTE: crypto.subtle is undefined in the
+      // Figma plugin iframe, but getRandomValues is a separate API and has been fine);
+      // fall back to a Math.random-based code if that API is unavailable, so sign-in
+      // never hard-fails on entropy alone (lower entropy, but still within the guard).
+      function genPairingCode() {
+        var B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+        if (window.crypto && crypto.getRandomValues) {
+          try {
+            var bytes = new Uint8Array(24);
+            crypto.getRandomValues(bytes);
+            var bin = '';
+            for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            var code = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            if (code.length >= 20) return code;
+          } catch (e) { /* fall through to the Math.random fallback below */ }
+        }
+        var out = '';
+        for (var j = 0; j < 32; j++) out += B64URL.charAt(Math.floor(Math.random() * B64URL.length));
+        return out;
+      }
+
+      function stopSignInPoll() {
+        if (signInPollTimer) { clearTimeout(signInPollTimer); signInPollTimer = null; }
+        if (signInPollAbort) { try { signInPollAbort.abort(); } catch (e) {} signInPollAbort = null; }
+      }
+
+      function signInSetStatus(text, isErr) {
+        var el = $('signInWaitStatus');
+        if (el) el.textContent = text;
+        var r = $('signInReceipt');
+        if (r) {
+          if (isErr) { r.setAttribute('data-state', 'err'); r.innerHTML = escHtml(text); }
+          else { r.setAttribute('data-state', 'empty'); r.innerHTML = ''; }
+        }
+      }
+
+      function signInFailed(reason) {
+        stopSignInPoll();
+        signInSetStatus(reason || 'Sign-in didn&rsquo;t complete. Try again.', true);
+      }
+
+      function signInReady(data) {
+        stopSignInPoll();
+        var bridgeUrl = data && data.bridgeUrl, apiKey = data && data.apiKey;
+        if (!bridgeUrl || !apiKey) { signInFailed('Sorb Cloud sent back an incomplete response. Try again.'); return; }
+        lsSet(LS.origin, bridgeUrl);          $('origin').value  = bridgeUrl;
+        lsSet(LS.apiKey, apiKey);             $('apiKey').value  = apiKey;   // → activeKey() on the non-demo branch
+        lsSet(LS.demo, '');                                                   // real bridge, not the demo pk
+        lsSet(LS.orgCloudBase, lsGet(LS.pairingCloudBase) || DEFAULT_CLOUD_BASE);
+        lsSet(LS.orgKeyConnected, 'true');
+        lsSet(LS.hasHandshake, 'true');       // connected-state flag (drives boot routing)
+        if (!lsGet(LS.app)) { lsSet(LS.app, DEFAULT_APP); $('appUrl').value = DEFAULT_APP; }
+        signInSetStatus('Connected — you&rsquo;re set. Opening your tokens&hellip;', false);
+        connStartPoll();
+        autoVerifyFailedAt = 0;
+        attemptInitialVerify(bridgeUrl).then(function(ok) { if (ok) { try { setConnState(true); } catch (e) {} } });
+        setTimeout(function() {
+          finishOnboarding('signin');          // sets onb + path, showMain()
+          try { setStatus('Connected — you&rsquo;re set.'); } catch (e) {}
+          try { $('committed').click(); } catch (e) {}   // load committed tokens from the bridge
+        }, 700);
+      }
+
+      function signInScheduleNext(code, cloudBase, delayMs) {
+        if (Date.now() - signInStartedAt > SIGNIN_TIMEOUT_MS) {
+          signInFailed('This took too long — the sign-in link expired. Try again.');
+          return;
+        }
+        signInPollTimer = setTimeout(function() { signInPollOnce(code, cloudBase); }, delayMs);
+      }
+
+      function signInPollOnce(code, cloudBase) {
+        var url = cloudBase + '/api/plugin-connect/poll?code=' + encodeURIComponent(code);
+        var ctrl = new AbortController();
+        signInPollAbort = ctrl;
+        var tid = setTimeout(function() { ctrl.abort(); }, 8000);
+        fetch(url, { signal: ctrl.signal, cache: 'no-store' })
+          .then(function(res) {
+            clearTimeout(tid);
+            if (res.status === 404) {
+              // Early 404 = the pairing isn't registered/minted yet (page still loading, or
+              // /start hadn't landed). Keep polling during a grace window; only a LATE 404
+              // means a genuinely expired/consumed code.
+              if (Date.now() - signInStartedAt < 15000) { signInScheduleNext(code, cloudBase, SIGNIN_POLL_MS); return null; }
+              signInFailed('This sign-in link expired. Try again.'); return null;
+            }
+            if (res.status === 400) { signInFailed('Something went wrong starting sign-in. Try again.'); return null; }
+            if (res.status === 429) {
+              return res.json().catch(function(e) { void e; return {}; }).then(function(body) {
+                var retry = (body && body.retryAfterMs) || 4000;
+                signInScheduleNext(code, cloudBase, retry);
+                return null;
+              });
+            }
+            return res.json().catch(function(e) { void e; return null; });
+          })
+          .then(function(data) {
+            if (data === null) return;         // already handled (error / rate-limit) above
+            if (!data) { signInScheduleNext(code, cloudBase, SIGNIN_POLL_MS); return; }
+            if (data.status === 'ready') { signInReady(data); return; }
+            if (data.status === 'error') { signInFailed(data.reason || 'Sign-in failed. Try again.'); return; }
+            signInScheduleNext(code, cloudBase, SIGNIN_POLL_MS);   // 'pending' (or unknown) — keep polling
+          })
+          .catch(function(e) {
+            void e; clearTimeout(tid);
+            signInScheduleNext(code, cloudBase, SIGNIN_POLL_MS);   // network hiccup — retry until the timeout
+          });
+      }
+
+      function signInUrlFor(code) {
+        return DEFAULT_CLOUD_BASE + '/plugin-connect?code=' + encodeURIComponent(code);
+      }
+
+      // Main thread validates the origin before calling figma.openExternal (main-thread-only
+      // API) — the UI iframe can only ask; it can't open external URLs itself.
+      function openExternalSignIn(code) {
+        try { post('sorb-open-external', { url: signInUrlFor(code) }); } catch (e) {}
+      }
+
+      // Register the code as 'pending' BEFORE polling so early polls see pending, not 404
+      // (the not_found race). Best-effort: if /start fails, the page still create-and-mints
+      // on first visit and the 15s poll grace-window covers the gap.
+      function signInPostStart(code, cloudBase, done) {
+        var url = cloudBase + '/api/plugin-connect/start';
+        var ctrl = new AbortController();
+        var tid = setTimeout(function() { ctrl.abort(); }, 8000);
+        fetch(url, {
+          method: 'POST', signal: ctrl.signal, cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: code }),
+        }).then(function(res) { clearTimeout(tid); done(!!res); })
+          .catch(function(e) { void e; clearTimeout(tid); done(false); });
+      }
+
+      function showSignInFlow() {
+        hideAllScreens();
+        $('tabs').hidden = true;
+        hideAllViews();
+        hideConnPill();
+        setHeaderLabel('Sign in to connect');
+        signInSetStatus('Waiting for you to sign in in your browser&hellip;', false);
+        $('signInFlow').classList.add('show');
+      }
+
+      $('pathSignIn').onclick = function() {
+        var code = genPairingCode();
+        lsSet(LS.pairingCode, code);
+        lsSet(LS.pairingCloudBase, DEFAULT_CLOUD_BASE);
+        showSignInFlow();
+        signInStartedAt = Date.now();
+        stopSignInPoll();
+        // Register pending → open browser → poll (the P1 contract sequence).
+        signInPostStart(code, DEFAULT_CLOUD_BASE, function(ok) {
+          void ok; // proceed regardless; the page create-and-mints + the 15s grace cover a /start miss
+          openExternalSignIn(code);
+          signInPollOnce(code, DEFAULT_CLOUD_BASE);
+        });
+      };
+      $('signInReopenBtn').onclick = function() {
+        var code = lsGet(LS.pairingCode);
+        if (!code) { code = genPairingCode(); lsSet(LS.pairingCode, code); lsSet(LS.pairingCloudBase, DEFAULT_CLOUD_BASE); }
+        openExternalSignIn(code);
+      };
+      $('signInCancelBtn').onclick = function() { stopSignInPoll(); showIntro(); };
+      $('signInBack').onclick      = function() { stopSignInPoll(); showIntro(); };
+
       $('pathPasteInvite').onclick = showPasteFlow;
       $('pathInviteDev').onclick   = showInviteFlow;
       $('pathOrgKey').onclick      = showOrgKeyFlow;
@@ -1543,7 +1793,8 @@
       $('inviteBack').onclick = showIntro;
       $('orgKeyBack').onclick = showIntro;
 
-      // "Advanced setup" — the existing guided Connect wizard (technical users).
+      // "Advanced setup" → "Manual bridge setup" — the existing guided Connect wizard
+      // (technical users).
       $('pathAdvanced').onclick = function() {
         lsSet(LS.demo, '');            // leaving demo mode; onboarded is set on finish/skip, not here
         showMain();                    // reveal the app behind the scrim (intro → step 1 continuity)
@@ -2320,9 +2571,12 @@
           })(name);
           tdAct.appendChild(del); tr.appendChild(tdAct);
 
-          // provenance hovercard (U3 · F5)
+          // provenance hovercard (U3 · F5) — gated behind an 8s intentional dwell
           tr.addEventListener('mouseover', (function(rowName, rowTr) {
-            return function() { showHovercard(rowTr, rowName); };
+            return function() {
+              clearTimeout(hcTimer);
+              hcTimer = setTimeout(function() { showHovercard(rowTr, rowName); }, HC_DWELL_MS);
+            };
           })(name, tr));
           tr.addEventListener('mouseout', hideHovercard);
           return tr;
@@ -2432,6 +2686,7 @@
       }
 
       function hideHovercard() {
+        clearTimeout(hcTimer);   // cancel any pending dwell-scheduled show (mouseout / scroll / re-render)
         var card = $('tkHovercard');
         if (card) { card.classList.remove('visible'); card.setAttribute('aria-hidden', 'true'); }
         hcVisible = false;

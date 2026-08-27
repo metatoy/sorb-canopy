@@ -73,14 +73,17 @@ SETTLE="${SORB_QA_SETTLE:-0.6}"
 #
 #   * header ~40px tall, spans the top.
 #   * "?" help affordance at top-right of header  ~ (455, 20).
-#   * two-path intro cards stacked in the LOWER HALF of the window; the primary
-#     "Connect your project" card sits around vertical mid-low.
+#   * account-first intro (2026-08-26): the primary orange "Sign in to connect"
+#     card sits mid-panel (~y=248 at 475-wide); a small "Have an org key? Paste
+#     it instead" link + a collapsed "Advanced setup" disclosure (self-host /
+#     invites / manual bridge) sit below it. RE-CALIBRATE Y against `shot intro`.
 #   * tabs row sits below the status bar ~ y=95, left-aligned, order
 #     Tokens / Components / Settings starting ~ x=20 with ~90px spacing.
 # ---------------------------------------------------------------------------
 HELP_X=455; HELP_Y=20            # "?" help / re-open intro (top-right header)
 
-INTRO_CONNECT_X=237; INTRO_CONNECT_Y=330   # "Connect your project" path card (centered, lower half)
+# Primary account path — the orange "Sign in to connect" card (opens browser → poll).
+INTRO_SIGNIN_X=237; INTRO_SIGNIN_Y=248     # "Sign in to connect" card (re-calibrate via `shot intro`)
 
 TAB_TOKENS_X=45;  TAB_TOKENS_Y=95          # Tokens tab
 TAB_COMPONENTS_X=140; TAB_COMPONENTS_Y=95  # Components tab
@@ -239,7 +242,8 @@ EOF
 }
 
 # capture — run the full U2 verify sequence.
-# U2 checkpoint: fresh install → branded two-path intro → working token view.
+# U2 checkpoint (2026-08-26): fresh install → account-first intro (primary
+# "Sign in to connect" + collapsed "Advanced setup") → sign-in→poll → token view.
 cmd_capture() {
   cat <<EOF
 Running U2 capture sequence.
@@ -250,12 +254,13 @@ off, recalibrate WIN_X/WIN_Y and/or the *_X/*_Y target vars near the top.
 EOF
   ensure_outdir
 
-  # 1) The two-path intro (first-open surface).
+  # 1) The account-first intro (first-open surface).
   shot intro
   settle
 
-  # 2) Click "Connect your project" → working token view.
-  click "$INTRO_CONNECT_X" "$INTRO_CONNECT_Y"
+  # 2) Click "Sign in to connect" → opens browser + starts polling.
+  #    (Full connect needs a real browser sign-in; this verifies the card + waiting state.)
+  click "$INTRO_SIGNIN_X" "$INTRO_SIGNIN_Y"
   settle
   shot intro-connect-click   # optional: state immediately after the click
   settle

@@ -8,7 +8,7 @@ window as PNG region screenshots, so a run produces a reproducible set of state
 screenshots (`intro`, `tokens-working`, `tab-components`, `tab-settings`,
 `help-reopen`) that verify the U2 checkpoint:
 
-> **fresh install → branded two-path intro → working token view.**
+> **fresh install → account-first intro (Sign in to connect + Advanced setup) → sign-in→poll → token view.**
 
 ## Why HID clicks instead of Accessibility / UI scripting
 
@@ -115,7 +115,7 @@ the 475×560 **Direction A** layout, **not** measured against a running build:
 | Target | Window-relative point | Notes |
 |---|---|---|
 | `?` help / reopen intro | (455, 20) | top-right of the ~40px header |
-| "Connect your project" card | (237, 330) | primary two-path card, centered, lower half |
+| "Sign in to connect" card | (237, 248) | primary account card (opens browser → poll); re-calibrate via `shot intro` |
 | Tokens tab | (45, 95) | tabs row below the status bar, left-aligned |
 | Components tab | (140, 95) | ~90px spacing |
 | Settings tab | (245, 95) | |

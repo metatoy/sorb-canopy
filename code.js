@@ -746,6 +746,18 @@ figma.ui.onmessage = (msg) => {
   }
   else if (msg.type === 'notify') figma.notify(msg.message);
   else if (msg.type === 'close') figma.closePlugin();
+  else if (msg.type === 'sorb-open-external') {
+    // P2 account-front-door — "Sign in to connect" hands us the pairing URL to
+    // open in the system browser. figma.openExternal is main-thread-only (the
+    // UI iframe has no such API), so this is its sole caller. Validate before
+    // opening: only ever send the user to the trusted Sorb Cloud sign-in host.
+    const url = typeof msg.url === 'string' ? msg.url : '';
+    if (url.indexOf('https://app.sorbcloud.com/') === 0) {
+      try { figma.openExternal(url); } catch (e) { figma.notify('Could not open the browser: ' + String(e)); }
+    } else {
+      figma.notify('Blocked an untrusted sign-in link.');
+    }
+  }
 };
 
 // Push the current tokens as soon as the UI is up. The UI follows with a
