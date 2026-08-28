@@ -1168,7 +1168,10 @@
         }
       }
 
-      var DEFAULT_ORIGIN = 'http://localhost:7777';
+      // Hosted-first (direction 2026-08-26: everything free, account required,
+      // hosted is the norm). The bridge defaults to the hosted bridge; self-host
+      // (local `sorb dev` on :7777) is set explicitly in Settings / Advanced.
+      var DEFAULT_ORIGIN = 'https://bridge.sorbcloud.com';
       var DEFAULT_APP    = 'http://localhost:5173';
       var DEFAULT_GH     = 'https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json';
       var DEFAULT_SB     = 'http://localhost:6006';
