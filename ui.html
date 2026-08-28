@@ -168,6 +168,12 @@
         display:flex; align-items:center; justify-content:center; gap:8px; flex:0 0 auto; }
       .copy-cta svg { display:block; }
 
+      /* ── Settings · Account block (dashboard link + log out) ──────────── */
+      .settings-account { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-1, transparent); }
+      .settings-account .sa-title { font-weight: 600; font-size: 12px; margin-bottom: 7px; }
+      .settings-account .sa-row { display: flex; gap: 8px; flex-wrap: wrap; }
+      .settings-account .sa-row .secondary { flex: 1 1 auto; }
+
       /* ── Part 8 · Settings "Advanced" disclosure ──────────────────────── */
       .adv { margin-top:8px; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
       .adv-sum { list-style:none; cursor:pointer; padding:10px 12px; font-size:12.5px; font-weight:650;
@@ -984,6 +990,16 @@
 
     <!-- ── SETTINGS VIEW ─────────────────────────────────────────────── -->
     <div id="view-settings" class="view">
+      <!-- Account: dashboard link + log out (opens app.sorbcloud.com; log out clears the connection). -->
+      <div class="settings-account" id="settingsAccount">
+        <div class="sa-title">Account</div>
+        <div class="sa-row">
+          <button class="secondary" id="openDashboardBtn" type="button">Open dashboard&nbsp;&#8599;</button>
+          <button class="secondary" id="logOutBtn" type="button">Log out</button>
+        </div>
+        <p class="settings-note" style="margin:6px 0 0;">Manage your org, keys &amp; billing in the dashboard. Log out clears this plugin&rsquo;s saved connection.</p>
+      </div>
+
       <p class="settings-note">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
 
       <!-- Part 8 · the technical fields collapse into an "Advanced" disclosure (closed by
@@ -1202,6 +1218,15 @@
           finishReset();        // wipe local + reset UI now (also covers the standalone case)
         };
       })();
+
+      // Settings · Account — open the hosted dashboard (manage org/keys/billing) + log out.
+      $('openDashboardBtn').onclick = function() {
+        try { post('sorb-open-external', { url: activeCloudBase() + '/dashboard' }); } catch (e) {}
+      };
+      $('logOutBtn').onclick = function() {
+        post('sorb-clear');   // wipe durable clientStorage
+        finishReset();        // clear local + back to the intro/sign-in screen
+      };
 
       // ── Figma reference pipeline (FLS v0.5.0 P1) ─────────────────────────
       // "Export variables to bridge": main thread collects this file's
