@@ -878,7 +878,7 @@
           <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor" aria-label="Toggle raw JSON editor">
             <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
           </button>
-          <button class="tk-raw-btn" id="publishTokens" title="Publish these tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Publish tokens to project" style="width:auto;padding:0 8px;font-weight:600;">Publish&nbsp;→</button>
+          <button class="tk-raw-btn" id="publishTokens" title="Snapshot the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Snapshot tokens to project" style="width:auto;padding:0 8px;font-weight:600;">Snapshot&nbsp;→</button>
         </div>
       </div>
 
@@ -2050,19 +2050,19 @@
       // ── Reload from Figma ──────────────────────────────────────────────
       $('reload').onclick = function() { post('reload-tokens'); };
 
-      // ── Publish to project (Figma Variables → cloud token set) ──────────
+      // ── Snapshot to project (Figma Variables → cloud token set) ─────────
       // Persists the working set as a versioned token set on the key's project
       // so it shows up in the dashboard Token Explorer. Previews (via the bridge)
-      // are ephemeral; THIS is the durable publish. Posts to the cloud, not the
+      // are ephemeral; THIS is the durable snapshot. Posts to the cloud, not the
       // bridge: activeCloudBase() + /api/plugin/publish-tokens, authed by the
       // plugin's key (scoped to its own project server-side).
       $('publishTokens').onclick = async function() {
         var key = activeKey();
-        if (!key) return setStatus('Connect / sign in first — publishing needs your project key.', true);
+        if (!key) return setStatus('Connect / sign in first — snapshotting needs your project key.', true);
         var names = Object.keys(tokenSet || {});
-        if (!names.length) return setStatus('No tokens to publish.', true);
+        if (!names.length) return setStatus('No tokens to snapshot.', true);
         var base = activeCloudBase();
-        setStatus('Publishing ' + names.length + ' tokens…');
+        setStatus('Snapshotting ' + names.length + ' tokens…');
         try {
           var res = await fetch(base + '/api/plugin/publish-tokens', {
             method: 'POST',
@@ -2072,14 +2072,14 @@
           var j = {};
           try { j = await res.json(); } catch (e) { j = {}; }
           if (res.ok && j && j.ok) {
-            setStatus('Published ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
+            setStatus('Snapshotted ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
           } else {
             var msg = (j && (j.message || j.error)) || ('HTTP ' + res.status);
             if (res.status === 401) msg = 'not authorized — sign in / reconnect';
-            setStatus('Publish failed: ' + msg, true);
+            setStatus('Snapshot failed: ' + msg, true);
           }
         } catch (e) {
-          setStatus('Publish failed: ' + ((e && e.message) || 'network') , true);
+          setStatus('Snapshot failed: ' + ((e && e.message) || 'network') , true);
         }
       };
 
