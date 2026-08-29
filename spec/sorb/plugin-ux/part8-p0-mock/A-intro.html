@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="_shared.css" />
+    <style>
+      /* mock-only: emphasized secondary card (blaze-tinted, still restrained) */
+      .card.sec.accent { border-color: var(--blaze); }
+      .card.sec.accent .ct { color: var(--blaze-ink); }
+      .card.sec.accent .arw { color: var(--blaze); }
+    </style>
+  </head>
+  <body>
+    <div class="hdr">
+      <div class="mark"><div class="glyph"></div></div>
+      <div class="conn-pill" data-state="disconnected" title="Bridge connection status">
+        <span class="conn-dot"></span><span>Not connected</span>
+      </div>
+      <div class="sp"></div>
+      <button class="qm" title="What is Sorb?" aria-label="What is Sorb?">?</button>
+    </div>
+
+    <div class="intro show">
+      <div class="h1">&ldquo;Looks right in Figma&rdquo; should mean right in code.</div>
+      <div class="disc">Works with Figma. Not affiliated with, or endorsed by, Figma. Figma is a trademark of Figma, Inc.</div>
+      <div class="sub">Propose the change. See it live. Verify before you merge.</div>
+      <div class="feats">
+        <div class="feat"><div class="fl">Propose</div><div class="fc">Change a token in your design tool.</div></div>
+        <div class="feat"><div class="fl">See it live</div><div class="fc">Watch it land in the running app.</div></div>
+        <div class="feat"><div class="fl">Verify</div><div class="fc">Confirm it before you merge.</div></div>
+      </div>
+      <div class="cards">
+        <button class="card pri">
+          <div class="ct">Paste an invite from your developer<span class="arw">&rarr;</span></div>
+          <div class="cc">Your dev sends one code. Paste it and you&rsquo;re connected — no servers, URLs, or keys.</div>
+        </button>
+        <button class="card sec accent">
+          <div class="ct">Invite a developer<span class="arw">&rarr;</span></div>
+          <div class="cc">Send your dev a short message. They run one command and send you an invite.</div>
+        </button>
+        <button class="card sec">
+          <div class="ct">Advanced setup<span class="arw">&rarr;</span></div>
+          <div class="cc">Enter the bridge, app, and key by hand. For technical users.</div>
+        </button>
+        <button class="card coming" disabled tabindex="-1" aria-disabled="true">
+          <div class="ct">Try the live demo<span class="soon">Coming soon</span></div>
+          <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
+        </button>
+      </div>
+      <div class="links">
+        <a href="#">Learn more</a><a href="#">Docs</a><a href="#">Join the beta</a>
+      </div>
+    </div>
+  </body>
+</html>

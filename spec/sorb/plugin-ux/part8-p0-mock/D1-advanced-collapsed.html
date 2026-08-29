@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .adv { margin-top:8px; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
+  .adv-sum { list-style:none; cursor:pointer; padding:10px 12px; font-size:12.5px; font-weight:650;
+    color:var(--ink); user-select:none; display:flex; align-items:center; gap:6px; }
+  .adv-sum::-webkit-details-marker { display:none; }
+  .adv-sum::before { content:'\25B8'; color:var(--taupe); font-size:11px; transition:transform .12s; }
+  .adv[open] .adv-sum::before { transform:rotate(90deg); }
+  .adv-hint { font-weight:400; color:var(--soft); font-size:11px; }
+  .adv-body { padding:2px 12px 12px; border-top:1px solid var(--line-2); }
+</style></head><body>    <div class="hdr">
+      <div class="mark"><div class="glyph"></div></div>
+      <div class="conn-pill" data-state="disconnected" title="Bridge connection status">
+        <span class="conn-dot"></span><span>Not connected</span>
+      </div>
+      <div class="sp"></div>
+      <button class="qm" title="What is Sorb?" aria-label="What is Sorb?">?</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab">Tokens</button>
+      <button class="tab">Components</button>
+      <button class="tab active">Settings</button>
+    </div>
+
+    <div class="view active" style="padding:14px;">
+      <p class="settings-note">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
+
+      <details class="adv" >
+        <summary class="adv-sum">Advanced setup <span class="adv-hint">— enter the bridge, app, and key by hand</span></summary>
+        <div class="adv-body">
+          <label for="origin">Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
+          <div class="set-field-row">
+            <input id="origin" placeholder="http://localhost:7777" />
+            <button type="button" class="set-test-btn">Test</button>
+          </div>
+          <span class="set-result"></span>
+
+          <label for="appUrl">App URL <span class="hint">(page to open with the preview)</span></label>
+          <div class="set-field-row">
+            <input id="appUrl" placeholder="http://localhost:5173" />
+            <button type="button" class="set-test-btn">Test</button>
+          </div>
+          <span class="set-result"></span>
+
+          <label for="storybookUrl">Storybook URL <span class="hint">(base URL — preview param appended on click)</span></label>
+          <input id="storybookUrl" placeholder="http://localhost:6006" />
+
+          <label for="githubUrl">GitHub file <span class="hint">(edit URL of tokens file on the target branch)</span></label>
+          <input id="githubUrl" placeholder="https://github.com/metatoy/sorb-demo/edit/main/tokens/semantic.json" />
+
+          <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
+          <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
+        </div>
+      </details>
+
+      <label class="sb-check" style="margin-top:14px;">
+        <input type="checkbox" checked />
+        Label inserted components
+        <span class="hint">(wrap each insert in a named frame)</span>
+      </label>
+    </div>
+</body></html>

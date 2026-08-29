@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="_shared.css" />
+    <style>
+      .flow { padding: 18px 20px 16px; }
+      .flow-back { background:none; border:0; padding:0; color:var(--soft); font-size:11px;
+        font-weight:550; cursor:pointer; display:inline-flex; align-items:center; gap:5px; margin-bottom:12px; width:auto; }
+      .flow-back:hover { color:var(--ink); }
+      .flow-h { font-size:17px; font-weight:650; letter-spacing:-.01em; margin:0 0 5px; }
+      .flow-p { font-size:12px; color:var(--ink-2); line-height:1.5; margin:0 0 14px; }
+      .msg-box { border:1px solid var(--line); border-radius:8px; background:var(--surface-2);
+        padding:12px 13px; font-size:11.5px; line-height:1.6; color:var(--ink-2); white-space:pre-wrap; }
+      .msg-box code { font-family:var(--mono); font-size:11px; background:var(--line-2);
+        padding:1px 5px; border-radius:4px; color:var(--ink); }
+      .msg-box .step-n { color:var(--blaze-ink); font-weight:650; }
+      .copy-cta { width:100%; margin-top:12px; background:var(--blaze); color:#fff; border:none;
+        border-radius:8px; padding:11px; font-size:13px; font-weight:650; cursor:pointer;
+        display:flex; align-items:center; justify-content:center; gap:8px; }
+      .copy-cta svg { display:block; }
+      .copy-hint { font-size:10.5px; color:var(--taupe); margin-top:9px; line-height:1.45; }
+    </style>
+  </head>
+  <body>
+    <div class="hdr">
+      <div class="mark"><div class="glyph"></div></div>
+      <div class="conn-pill" data-state="disconnected" title="Bridge connection status">
+        <span class="conn-dot"></span><span>Not connected</span>
+      </div>
+      <div class="sp"></div>
+      <button class="qm" title="What is Sorb?" aria-label="What is Sorb?">?</button>
+    </div>
+
+    <div class="flow">
+      <button class="flow-back">&larr; Back</button>
+      <div class="flow-h">Invite a developer</div>
+      <div class="flow-p">Send this to whoever runs the app&rsquo;s code. They run one command and send you back an invite to paste here.</div>
+
+      <div class="msg-box">Hey — I&rsquo;m using the Sorb plugin in Figma to preview our design tokens on the running app. To connect it, from the app&rsquo;s repo:
+
+<span class="step-n">1.</span> Install the bridge:  <code>npm i -g @sorb/juice</code>
+<span class="step-n">2.</span> Start it:  <code>sorb dev</code>
+<span class="step-n">3.</span> Make my invite:  <code>sorb handshake --copy</code>
+<span class="step-n">4.</span> Send me the code it prints — I&rsquo;ll paste it into the plugin. That&rsquo;s it.</div>
+
+      <button class="copy-cta">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/><path d="M2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1H3a1 1 0 0 1-1-1z"/></svg>
+        Copy message
+      </button>
+
+      <div class="copy-hint">Once they send the invite back, choose &ldquo;Paste an invite&rdquo; on the home screen and drop it in.</div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="_shared.css" />
+    <style>
+      .flow { padding: 18px 20px 16px; }
+      .flow-back { background:none; border:0; padding:0; color:var(--soft); font-size:11px;
+        font-weight:550; cursor:pointer; display:inline-flex; align-items:center; gap:5px; margin-bottom:12px; width:auto; }
+      .flow-back:hover { color:var(--ink); }
+      .flow-h { font-size:17px; font-weight:650; letter-spacing:-.01em; margin:0 0 5px; }
+      .flow-p { font-size:12px; color:var(--ink-2); line-height:1.5; margin:0 0 14px; }
+      .invite-ta { width:100%; height:96px; border:1px solid var(--line); border-radius:8px;
+        padding:9px 10px; font-family:var(--mono); font-size:11px; line-height:1.5; resize:none;
+        color:var(--ink); background:var(--surface); word-break:break-all; }
+      .invite-ta:focus-visible { outline:2px solid var(--blaze); outline-offset:1px; border-color:var(--blaze); }
+      .redeem-cta { width:100%; margin-top:12px; background:var(--blaze); color:#fff; border:none;
+        border-radius:8px; padding:11px; font-size:13px; font-weight:650; cursor:pointer; }
+      .redeem-hint { font-size:10.5px; color:var(--taupe); margin-top:9px; line-height:1.45; }
+    </style>
+  </head>
+  <body>
+    <div class="hdr">
+      <div class="mark"><div class="glyph"></div></div>
+      <div class="conn-pill" data-state="green-live" title="Bridge connection status">
+        <span class="conn-dot"></span><span>Connected</span>
+      </div>
+      <div class="sp"></div>
+      <button class="qm" title="What is Sorb?" aria-label="What is Sorb?">?</button>
+    </div>
+
+    <div class="flow">
+      <button class="flow-back">&larr; Back</button>
+      <div class="flow-h">Paste your invite</div>
+      <div class="flow-p">Paste the invite your developer sent. Sorb reads it and connects — you won&rsquo;t need to enter any servers, URLs, or keys.</div>
+
+      <textarea class="invite-ta" aria-label="Paste the invite your developer sent">sorb://handshake/eyJ2IjoxLCJvcmlnaW4iOiJodHRwOi8vMTI3LjAuMC4xOjc3NzciLCJhcHBVcmwiOiJodHRwOi8vbG9jYWxob3N0OjUxNzMiLCJnaCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9tZXRhdG95L3NvcmItZGVtby9lZGl0L21haW4vdG9rZW5zL3NlbWFudGljLmpzb24iLCJwayI6IiIsIm5hbWVzcGFjZSI6InNvcmItZGVtbyJ9</textarea>
+
+      <button class="redeem-cta">Redeem invite</button>
+
+      <div class="receipt" data-state="ok" role="status" style="margin-top:14px;">
+        <div>Connected to <b>sorb-demo</b> — you&rsquo;re set. Opening your tokens&hellip;</div>
+      </div>
+
+      <div class="redeem-hint">Don&rsquo;t have an invite yet? Go back and choose &ldquo;Invite a developer&rdquo; to send your dev a one-line request.</div>
+    </div>
+  </body>
+</html>
