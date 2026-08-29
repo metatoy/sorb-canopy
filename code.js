@@ -46,29 +46,86 @@ const toTokenName = (name) => name.split('/').map((s) => s.trim()).join('-');
 
 // ─── token collection ───────────────────────────────────────────────────────
 
-async function collectTokens() {
-  const tokens = {};
-  const collections = await figma.variables.getLocalVariableCollectionsAsync();
-  const defaultModeByCollection = {};
-  for (const c of collections) defaultModeByCollection[c.id] = c.defaultModeId;
+// Case-insensitive "Dark" mode-name heuristic (dark-mode-phase3 §Fork-3A) —
+// zero config, matches Figma's own Light/Dark default mode naming.
+const DARK_MODE_NAME_RE = /^dark$/i;
 
+// Per-collection mode maps: each collection's default (light) modeId + its
+// dark modeId when a mode named "Dark" exists (else null). Computed once per
+// collect pass and threaded through so light + dark reads walk the same
+// collections/vars without re-fetching.
+async function loadModeMaps() {
+  const collections = await figma.variables.getLocalVariableCollectionsAsync();
+  const lightModeByCollection = {};
+  const darkModeByCollection = {};
+  let hasDark = false;
+  for (const c of collections) {
+    lightModeByCollection[c.id] = c.defaultModeId;
+    let darkModeId = null;
+    for (const m of c.modes) {
+      if (DARK_MODE_NAME_RE.test(m.name)) { darkModeId = m.modeId; break; }
+    }
+    darkModeByCollection[c.id] = darkModeId;
+    if (darkModeId) hasDark = true;
+  }
+  return { lightModeByCollection, darkModeByCollection, hasDark };
+}
+
+// Resolve a single Variable's value for the requested mode (light by default,
+// dark when wantDark + the variable's collection has a detected dark mode),
+// resolving one level of alias IN THAT SAME MODE — a semantic→primitive alias
+// must read the primitive's dark value, not its default, or the dark set
+// would silently collapse to light for every aliased token.
+async function resolveValueForMode(v, wantDark, maps) {
+  const lightModeId = maps.lightModeByCollection[v.variableCollectionId];
+  let modeId = lightModeId;
+  if (wantDark) {
+    const darkModeId = maps.darkModeByCollection[v.variableCollectionId];
+    if (darkModeId) modeId = darkModeId;
+  }
+  let value = v.valuesByMode[modeId];
+  if (value === undefined) value = v.valuesByMode[lightModeId]; // guard sparse mode entries
+
+  if (value && value.type === 'VARIABLE_ALIAS') {
+    const target = await figma.variables.getVariableByIdAsync(value.id);
+    if (target) {
+      const targetLightModeId = maps.lightModeByCollection[target.variableCollectionId];
+      let targetModeId = targetLightModeId;
+      if (wantDark) {
+        const targetDarkModeId = maps.darkModeByCollection[target.variableCollectionId];
+        if (targetDarkModeId) targetModeId = targetDarkModeId;
+      }
+      value = target.valuesByMode[targetModeId];
+      if (value === undefined) value = target.valuesByMode[targetLightModeId];
+    }
+  }
+  return value;
+}
+
+// Mode-aware token read. wantDark=false (default) reproduces the original
+// defaultModeId-only walk byte-for-byte; wantDark=true reads each variable's
+// detected dark mode (falling back to light where a collection has none).
+// modeMaps is optional — pass the result of loadModeMaps() to avoid
+// re-fetching collections when reading both modes in one pass (collectModes).
+async function collectTokens(wantDark, modeMaps) {
+  const maps = modeMaps || (await loadModeMaps());
+  const tokens = {};
   const vars = await figma.variables.getLocalVariablesAsync();
   for (const v of vars) {
-    const modeId = defaultModeByCollection[v.variableCollectionId];
-    let value = v.valuesByMode[modeId];
-
-    // Resolve one level of alias (e.g. semantic → primitive).
-    if (value && value.type === 'VARIABLE_ALIAS') {
-      const target = await figma.variables.getVariableByIdAsync(value.id);
-      if (target) {
-        const targetMode = defaultModeByCollection[target.variableCollectionId];
-        value = target.valuesByMode[targetMode];
-      }
-    }
-
+    const value = await resolveValueForMode(v, !!wantDark, maps);
     tokens[toTokenName(v.name)] = toTokenValue(v.resolvedType, value);
   }
   return tokens;
+}
+
+// Read both modes in one pass. dark is null (not {}) when no collection has a
+// detected Dark mode — sendTokens/autoCollect use that to decide flat vs
+// mode-aware push, matching the ui.html back-compat contract.
+async function collectModes() {
+  const maps = await loadModeMaps();
+  const light = await collectTokens(false, maps);
+  const dark = maps.hasDark ? await collectTokens(true, maps) : null;
+  return { light, dark, hasDark: maps.hasDark };
 }
 
 // ─── resolved-map export (Figma Variables → the ResolvedToken[] shape) ───────
@@ -191,12 +248,22 @@ function stableStringify(obj) {
 let lastTokensJson = null;
 
 // Manual / on-open send — always posts, tagging the `source` so the UI knows
-// whether it may overwrite an edited editor.
+// whether it may overwrite an edited editor. Mode-aware (dark-mode-phase3
+// P3.0): reads both modes; `darkTokens`/`hasDark` are only meaningful when a
+// collection carries a detected Dark mode, so a no-dark file's message shape
+// still round-trips through ui.html's flat back-compat path (darkTokens
+// arrives as null, which buildPreviewBody() treats as "flat push").
 async function sendTokens(source) {
   try {
-    const tokens = await collectTokens();
-    lastTokensJson = stableStringify(tokens);
-    figma.ui.postMessage({ type: 'tokens', tokens, source: source || 'manual' });
+    const modes = await collectModes();
+    lastTokensJson = stableStringify({ light: modes.light, dark: modes.dark });
+    figma.ui.postMessage({
+      type: 'tokens',
+      tokens: modes.light,
+      darkTokens: modes.dark,
+      hasDark: modes.hasDark,
+      source: source || 'manual',
+    });
   } catch (err) {
     figma.ui.postMessage({ type: 'error', message: String(err) });
   }
@@ -215,12 +282,18 @@ async function autoCollect() {
   if (_collecting) return; // don't overlap async collects
   _collecting = true;
   try {
-    const tokens = await collectTokens();
-    const json = stableStringify(tokens);
+    const modes = await collectModes();
+    const json = stableStringify({ light: modes.light, dark: modes.dark });
     const changed = json !== lastTokensJson;              // compute BEFORE reassigning
     if (changed) {
       lastTokensJson = json;
-      figma.ui.postMessage({ type: 'tokens', tokens, source: 'auto' });   // §2 payload unchanged
+      figma.ui.postMessage({
+        type: 'tokens',
+        tokens: modes.light,
+        darkTokens: modes.dark,
+        hasDark: modes.hasDark,
+        source: 'auto',
+      });
     }
     figma.ui.postMessage({ type: 'auto-freshness', ok: true, changed: changed, at: Date.now() });
   } catch (e) {

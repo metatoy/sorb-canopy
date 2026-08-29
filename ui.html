@@ -868,6 +868,7 @@
     <div id="view-tokens" class="view active">
       <div class="tk-head">
         <label>Tokens <span class="hint">(from Figma Variables — editable)</span></label>
+        <span class="hint" id="darkModeBadge" hidden style="font-weight:600;" title="Both Light and Dark values push together; live app preview toggles.">🌗&nbsp;Light + Dark detected — previews will toggle</span>
         <div class="tk-head-right">
           <span class="hint" style="font-weight:400;cursor:pointer;">
             <input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
@@ -1355,6 +1356,9 @@
 
       // ── working set (single source of truth) + editor dirty-state ───────
       var tokenSet = {};            // { name: value } working set — both views derive from this
+      var darkTokenSet = null;      // { name: value } | null — dark-mode set (dark-mode-phase3 P3.1); not
+                                     // independently editable in the table, just carried + pushed alongside
+      var hasDarkMode = false;      // does the current Figma file carry a detected Light+Dark collection?
       var tokenFilters = {};        // active group filters (empty = all visible)
       var tokenFilterOpen = false;  // [Filter] chip expanded?
       var typeGroupExpanded = {};   // C2 — per type-group "Show all" expansion state
@@ -1378,9 +1382,22 @@
       var dirty = false;            // raw editor has unsaved edits
       var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
 
-      function applyTokens(tokens, isAuto) {
+      function applyTokens(tokens, darkTokens, hasDark, isAuto) {
+        darkTokenSet = (darkTokens && Object.keys(darkTokens).length) ? darkTokens : null;
+        hasDarkMode = !!hasDark;
+        renderDarkModeBadge();
         setTokenSet(tokens, { silent: true });
         setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables' + (isAuto ? ' (auto).' : '.'));
+      }
+
+      // ── dark-mode indicator (dark-mode-phase3 P3.2, minimal) — a one-line
+      // badge next to the Tokens header when the file carries a detected
+      // Light+Dark collection; both modes push regardless of this display.
+      function renderDarkModeBadge() {
+        var b = $('darkModeBadge');
+        if (!b) return;
+        b.hidden = !hasDarkMode;
+        b.textContent = hasDarkMode ? 'Light + Dark detected — previews will toggle' : '';
       }
 
       // ── messages from main thread ──────────────────────────────────────
@@ -2177,6 +2194,18 @@
         return { mode: 'none', url: appUrl };
       }
 
+      // ── mode-aware preview body (dark-mode-phase3 §3) — the ONE back-compat
+      // branch every push site routes through. Dark set present → the
+      // envelope `{ tokens, darkTokens }` (omit `darkMode`; leaf resolves the
+      // convention from its own TargetAdapter — spec Fork-4A). No dark set →
+      // the exact flat map, byte-identical to the pre-phase3 push.
+      function buildPreviewBody(light, dark) {
+        if (dark && Object.keys(dark).length) {
+          return JSON.stringify({ tokens: light, darkTokens: dark });
+        }
+        return JSON.stringify(light);
+      }
+
       // ── Preview in app — ESTABLISHES the live session (§7 option 1) ─────
       $('preview').onclick = async function() {
         var origin = trimOrigin();
@@ -2202,7 +2231,7 @@
         try {
           var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
-            body: JSON.stringify(tokenSet),
+            body: buildPreviewBody(tokenSet, darkTokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var d = await res.json();
@@ -2234,7 +2263,7 @@
         try {
           var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
-            body: JSON.stringify(tokenSet),
+            body: buildPreviewBody(tokenSet, darkTokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var d = await res.json();
@@ -3139,7 +3168,7 @@
         try {
           var res = await bfetch(trimOrigin() + '/preview/' + livePreviewId, {
             method: 'PUT', headers: { 'content-type': 'text/plain' },
-            body: JSON.stringify(tokenSet),
+            body: buildPreviewBody(tokenSet, darkTokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           setStatus('Live preview updated (' + Object.keys(tokenSet).length + ' tokens).');
@@ -3161,12 +3190,15 @@
       // "dirty" now means: the raw editor is open AND has unsaved edits.
       function handleTokensMessage(msg) {
         if (msg.source === 'auto' && rawOpen && dirty) {
-          pendingAuto = msg.tokens;
+          pendingAuto = msg;
           setStatus('Figma Variables changed — <a href="#" id="applyAuto">Refresh</a>');
           var ap = $('applyAuto');
-          if (ap) ap.onclick = function(e) { e.preventDefault(); applyTokens(pendingAuto, true); };
+          if (ap) ap.onclick = function(e) {
+            e.preventDefault();
+            applyTokens(pendingAuto.tokens, pendingAuto.darkTokens, pendingAuto.hasDark, true);
+          };
         } else {
-          applyTokens(msg.tokens, msg.source === 'auto');
+          applyTokens(msg.tokens, msg.darkTokens, msg.hasDark, msg.source === 'auto');
         }
       }
 
