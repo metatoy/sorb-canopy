@@ -944,6 +944,7 @@
         <!-- C3 · the redundant "Load from App" ghost is dropped — the giant foot
              CTA above is the single load path. Sync Variables + Open PR remain. -->
         <div class="sec-actions">
+          <button class="ghost" id="ghPreview">Preview</button>
           <button class="ghost" id="ghSync">Sync Variables</button>
           <button class="ghost off" id="ghPr" disabled>Open PR</button>
         </div>
@@ -1485,6 +1486,7 @@
           cta.setAttribute('data-act', 'demo');
           $('ghSync').disabled = true;
           $('ghPr').disabled = true; $('ghPr').classList.add('off');
+          $('ghPreview').disabled = true;   // demo CTA itself opens the seeded preview
           return;
         }
         $('ghSync').disabled = false;
@@ -1503,6 +1505,10 @@
         }
         $('ghPr').disabled = !livePreviewId;      // Open-PR ghost live only with a session
         $('ghPr').classList.toggle('off', !livePreviewId);
+        // Preview ghost: always available once tokens are loaded, so the flow is no
+        // longer one-way — you can re-push / re-open the preview even after the CTA
+        // has advanced to its terminal "Open PR" state (livePreviewId set).
+        $('ghPreview').disabled = (n === 0);
       }
       $('cta').onclick      = function() {
         var t = $('cta').getAttribute('data-act');
@@ -1515,6 +1521,7 @@
         if (t) $(t).click();
       };
       $('ghSync').onclick   = function() { $('syncvars').click(); };
+      $('ghPreview').onclick = function() { $('preview').click(); };
       $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
       $('ghReload').onclick = function() { $('reload').click(); };
 
@@ -1729,7 +1736,12 @@
         lsSet(LS.orgCloudBase, lsGet(LS.pairingCloudBase) || DEFAULT_CLOUD_BASE);
         lsSet(LS.orgKeyConnected, 'true');
         lsSet(LS.hasHandshake, 'true');       // connected-state flag (drives boot routing)
-        if (!lsGet(LS.app)) { lsSet(LS.app, DEFAULT_APP); $('appUrl').value = DEFAULT_APP; }
+        // Sync App URL from the paired project (Sorb Cloud sends projects.app_url as
+        // data.appUrl). Falls back to the localhost default only when neither the
+        // cloud nor a prior manual entry provides one.
+        var syncedAppUrl = data && typeof data.appUrl === 'string' ? data.appUrl.trim() : '';
+        if (syncedAppUrl) { lsSet(LS.app, syncedAppUrl); $('appUrl').value = syncedAppUrl; }
+        else if (!lsGet(LS.app)) { lsSet(LS.app, DEFAULT_APP); $('appUrl').value = DEFAULT_APP; }
         signInSetStatus('Connected — you’re set. Opening your tokens…', false);
         connStartPoll();
         autoVerifyFailedAt = 0;
