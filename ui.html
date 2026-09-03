@@ -1082,7 +1082,7 @@
           <span id="ctaLabel">Load from App</span><span class="n" id="ctaCount" hidden></span>
         </button>
         <!-- shown only when the CTA is disabled (previewed, nothing changed). -->
-        <div class="whyrow" id="ctaWhy" hidden>Nothing changed since your last preview</div>
+        <div class="whyrow" id="ctaWhy" hidden>Everything here is saved to your project.</div>
         <div class="sec-actions">
           <button class="ghost" id="ghSave">Save to project&nbsp;→</button>
           <button class="ghost off" id="ghPr" disabled>Open PR</button>
@@ -1316,11 +1316,9 @@
       LS.lastComponentCount = 'sorb.lastComponentCount';
       LS.lastTokenIds       = 'sorb.lastTokenIds';
       LS.lastTokenSnapshot  = 'sorb.lastTokenSnapshot';
-      // Baseline for the "N changes" the Preview CTA promises: a name→value map of
-      // the working set at the last successful preview push. Distinct from
-      // lastTokenSnapshot (which is the committed-vs-bridge drift axis). Empty until
-      // the first preview → the count then reads the total token load.
-      LS.lastPreviewedMap   = 'sorb.lastPreviewedMap';
+      // (retired 2026-09-03: sorb.lastPreviewedMap — the changes baseline is now
+      // committedTokens, i.e. what's SAVED TO THE PROJECT. Previews are pure looks
+      // with zero state side-effects; only Save to project moves the baseline.)
       // Part 8 · handshake — set once a developer invite has been pasted (Advanced-only
       // now; the front-door primary is account sign-in, not this flag).
       LS.hasHandshake       = 'sorb.hasHandshake';
@@ -1631,28 +1629,40 @@
       var dirty = false;            // raw editor has unsaved edits
       var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
 
-      // ── changes-since-last-preview model (§1) ───────────────────────────
-      // Drives the CTA count, the diff strip, and the .chg row tint. Reuses
-      // diffTokens() (the drift-banner differ). Baseline = LS.lastPreviewedMap;
-      // when unset (never previewed) hasBaseline is false and the count falls back
-      // to the total token load. NOTE (accepted limit): compares tokenSet only —
-      // darkTokenSet changes are not counted here.
-      var chgList = [], chgSet = {}, hasBaseline = false, _snapRaw = null, _snapObj = null;
+      // ── unsaved-changes model (fix 2026-09-03) ──────────────────────────
+      // Drives the CTA count, the CHANGED group, and the .chg row tint.
+      // Baseline = committedTokens (what's SAVED TO THE PROJECT, GET /tokens/latest)
+      // — NOT the last preview: previews are ephemeral looks and must never move
+      // the baseline. CHANGED = committed tokens whose value differs or that were
+      // removed; tokens new-in-Figma aren't listed (nothing shipped to differ from).
+      // No baseline yet (never saved) → count falls back to the total token load.
+      // NOTE (accepted limit): compares tokenSet only — darkTokenSet not counted.
+      var chgList = [], chgSet = {}, hasBaseline = false;
       var filterChanged = false;    // W3 · changed-only list filter (count chip / CHANGED header)
       var tokenQuery = '';          // W2 · toolbar search query
       function refreshChanges() {
-        var raw = lsGet(LS.lastPreviewedMap);
-        if (raw !== _snapRaw) {                     // memoize the parse
-          _snapRaw = raw;
-          try { _snapObj = raw ? JSON.parse(raw) : null; } catch (e) { _snapObj = null; }
-        }
-        if (_snapObj == null) { chgList = []; chgSet = {}; hasBaseline = false; return; }
+        chgList = []; chgSet = {};
+        if (!committedTokens || !Object.keys(committedTokens).length) { hasBaseline = false; return; }
         hasBaseline = true;
-        chgList = diffTokens(raw, tokenSet);        // sorted changed names (adds/removes incl.)
-        chgSet = {};
-        for (var i = 0; i < chgList.length; i++) chgSet[chgList[i]] = true;
+        var keys = Object.keys(committedTokens);
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i];
+          if (tokenSet[k] !== committedTokens[k]) { chgList.push(k); chgSet[k] = true; }
+        }
+        chgList.sort();
       }
-      function markPreviewed() { lsSet(LS.lastPreviewedMap, JSON.stringify(tokenSet)); }
+      // Quiet background refresh of the committed baseline (boot · after save).
+      function refreshCommittedBaseline() {
+        var origin = trimOrigin(); if (!origin) return;
+        bfetch(origin + '/tokens/latest')
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(json) {
+            if (!json) return;
+            committedTokens = JSON.parse(JSON.stringify(json));
+            renderTokenTable(); updateCta();
+          })
+          .catch(function(e) { /* quiet — the empty-baseline fallback covers it */ });
+      }
       // W3 · toggle the changed-only view; the count chip and CHANGED header both call this.
       function toggleChangedFilter() {
         filterChanged = !filterChanged;
@@ -1802,7 +1812,7 @@
         }
         // W3 · the count chip doubles as the changed-only filter toggle
         count.classList.toggle('on', filterChanged);
-        count.title = filterChanged ? 'Show all tokens' : 'Show only the changed tokens';
+        count.title = filterChanged ? 'Show all tokens' : 'Show only the unsaved changes';
         if (filterChanged && (!hasBaseline || chgList.length === 0)) {
           // filter no longer applicable (baseline reset / all previewed) → drop it
           filterChanged = false;
@@ -2006,6 +2016,7 @@
         showView('tokens');
         updateCta();
         renderIdleStatus(true);                   // W2 · seed the one-voice status line
+        refreshCommittedBaseline();               // unsaved-changes baseline (what's in the project)
       }
 
       function showOrgKeyFlow() {
@@ -2457,6 +2468,7 @@
           try { j = await res.json(); } catch (e) { j = {}; }
           if (res.ok && j && j.ok) {
             setStatus('Saved ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
+            refreshCommittedBaseline();             // the project now matches → CHANGED empties honestly
           } else {
             var msg = (j && (j.message || j.error)) || ('HTTP ' + res.status);
             if (res.status === 401) msg = 'not authorized — sign in / reconnect';
@@ -2610,9 +2622,7 @@
           hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           livePreviewId = d.id;
-          markPreviewed();                          // §1 baseline → CTA count resets to 0
-          filterChanged = false;                    // W3 · the delta is gone; drop the filter
-          updateCta();                              // session live → Open PR unlocks
+          updateCta();                              // session live → Open PR unlocks (preview never moves the changes baseline)
           var url = target.url + (target.url.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Preview ready: ' + d.id });
@@ -2643,7 +2653,7 @@
           lsSet(LS.lastTokenIds, JSON.stringify(Object.keys(tokenSet).sort()));
           hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
-          markPreviewed(); updateCta();             // §1 baseline — a storybook preview is a preview of the same body
+          updateCta();                              // preview is a pure look — baseline untouched
           var url = sbUrl + (sbUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Storybook preview: ' + d.id });
@@ -3062,11 +3072,11 @@
           if (chgSet[name]) {
             input.classList.add('chg');           // info-blue: changed since last preview
             // "was <old>" hint — the delta readable in place (W2)
-            if (_snapObj && _snapObj[name] !== undefined) {
+            if (committedTokens && committedTokens[name] !== undefined) {
               tdVal.className = 'tk-val-cell';
               var was = document.createElement('span');
               was.className = 'tk-was';
-              was.textContent = 'was ' + _snapObj[name];
+              was.textContent = 'was ' + committedTokens[name];
               tdVal.appendChild(was);
             }
           }
@@ -3126,8 +3136,8 @@
           var ctr = document.createElement('tr');
           ctr.className = 'tk-tier-head chg';
           ctr.setAttribute('role', 'button');
-          ctr.title = filterChanged ? 'Show all tokens' : 'Show only the changed tokens';
-          ctr.innerHTML = '<td colspan="4"><span>Changed · since last preview</span>'
+          ctr.title = filterChanged ? 'Show all tokens' : 'Show only the unsaved changes';
+          ctr.innerHTML = '<td colspan="4"><span>Changed · unsaved</span>'
             + '<span class="tk-tier-badge">' + chgNames.length + '</span></td>';
           ctr.onclick = toggleChangedFilter;
           body.appendChild(ctr);
@@ -3137,15 +3147,15 @@
             // removed since last preview — no live value to edit
             var rtr = document.createElement('tr');
             var rIcon = document.createElement('td'); rIcon.className = 'tk-col-icon';
-            rIcon.innerHTML = iconCellHtml(cn, (_snapObj && _snapObj[cn]) || '');
+            rIcon.innerHTML = iconCellHtml(cn, (committedTokens && committedTokens[cn]) || '');
             rtr.appendChild(rIcon);
             var rName = document.createElement('td');
             var rSpan = document.createElement('span'); rSpan.className = 'tk-name'; rSpan.textContent = cn;
             rName.appendChild(rSpan); rtr.appendChild(rName);
             var rVal = document.createElement('td'); rVal.className = 'tk-val-cell';
-            if (_snapObj && _snapObj[cn] !== undefined) {
+            if (committedTokens && committedTokens[cn] !== undefined) {
               var rw = document.createElement('span'); rw.className = 'tk-was';
-              rw.textContent = 'was ' + _snapObj[cn]; rVal.appendChild(rw);
+              rw.textContent = 'was ' + committedTokens[cn]; rVal.appendChild(rw);
             }
             var rem = document.createElement('span'); rem.className = 'tk-removed';
             rem.textContent = '(removed)'; rVal.appendChild(rem);
@@ -3583,7 +3593,6 @@
             body: buildPreviewBody(tokenSet, darkTokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
-          markPreviewed();                          // §1 the live preview now reflects the edit → 0 changes
           updateCta();
           setStatus('Live preview updated (' + Object.keys(tokenSet).length + ' tokens).');
         } catch (e) { setStatus('Live preview update failed: ' + e.message, true); }
