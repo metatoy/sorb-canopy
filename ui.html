@@ -1319,6 +1319,9 @@
       // (retired 2026-09-03: sorb.lastPreviewedMap — the changes baseline is now
       // committedTokens, i.e. what's SAVED TO THE PROJECT. Previews are pure looks
       // with zero state side-effects; only Save to project moves the baseline.)
+      // The hosted bridge's /tokens/latest store is empty (saves go to the cloud),
+      // so the baseline also persists plugin-side at each successful Save:
+      LS.savedBaseline      = 'sorb.savedBaseline';
       // Part 8 · handshake — set once a developer invite has been pasted (Advanced-only
       // now; the front-door primary is account sign-in, not this flag).
       LS.hasHandshake       = 'sorb.hasHandshake';
@@ -1652,16 +1655,26 @@
         chgList.sort();
       }
       // Quiet background refresh of the committed baseline (boot · after save).
+      // Hosted mode: the bridge's committed store is EMPTY (saves land in the
+      // cloud), so the durable plugin-side snapshot from the last successful
+      // "Save to project" is the baseline; a non-empty bridge head (self-host
+      // `sorb commit` flow) wins when present.
+      function hydrateSavedBaseline() {
+        var raw = lsGet(LS.savedBaseline);
+        if (!raw) return false;
+        try { committedTokens = JSON.parse(raw); return true; } catch (e) { return false; }
+      }
       function refreshCommittedBaseline() {
+        if (hydrateSavedBaseline()) { renderTokenTable(); updateCta(); }
         var origin = trimOrigin(); if (!origin) return;
         bfetch(origin + '/tokens/latest')
           .then(function(r) { return r.ok ? r.json() : null; })
           .then(function(json) {
-            if (!json) return;
+            if (!json || !Object.keys(json).length) return;   // empty bridge store → keep the saved baseline
             committedTokens = JSON.parse(JSON.stringify(json));
             renderTokenTable(); updateCta();
           })
-          .catch(function(e) { /* quiet — the empty-baseline fallback covers it */ });
+          .catch(function(e) { /* quiet — the saved-baseline fallback covers it */ });
       }
       // W3 · toggle the changed-only view; the count chip and CHANGED header both call this.
       function toggleChangedFilter() {
@@ -2468,7 +2481,10 @@
           try { j = await res.json(); } catch (e) { j = {}; }
           if (res.ok && j && j.ok) {
             setStatus('Saved ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
-            refreshCommittedBaseline();             // the project now matches → CHANGED empties honestly
+            // the project now matches the working set → baseline = what we just saved
+            committedTokens = JSON.parse(JSON.stringify(tokenSet));
+            lsSet(LS.savedBaseline, JSON.stringify(tokenSet));
+            renderTokenTable(); updateCta();
           } else {
             var msg = (j && (j.message || j.error)) || ('HTTP ' + res.status);
             if (res.status === 401) msg = 'not authorized — sign in / reconnect';
