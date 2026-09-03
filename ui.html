@@ -19,7 +19,11 @@
         font-family:var(--sans); font-size:12px;
       }
       * { box-sizing: border-box; }
-      body { margin:0; color:var(--ink); background:var(--snow); overflow-x:hidden;
+      /* W2 fixed-window architecture: the body is a pinned flex column — header,
+         tabs, toolbar, verbs never move; only the token list scrolls. */
+      html, body { height:100%; }
+      body { margin:0; color:var(--ink); background:var(--snow); overflow:hidden;
+        height:100vh; display:flex; flex-direction:column;
         -webkit-font-smoothing:antialiased; }
 
       /* ── keyboard focus ring (a11y · GFP RC1 B6) ─────────────────────────
@@ -39,11 +43,23 @@
         border-color: var(--blaze);
       }
 
-      /* ── header (persistent) ─────────────────────────────────────────── */
-      .hdr { display:flex; align-items:center; gap:10px; padding:9px 12px;
-        border-bottom:1px solid var(--line-2); background:var(--surface); }
-      .mark { display:flex; align-items:center; gap:7px; }
-      .glyph { width:16px; height:16px; border-radius:5px; background:var(--blaze); flex:0 0 auto; }
+      /* ── header = the W2 one-voice STATUS LINE (32px, pinned) ────────── */
+      .hdr { display:flex; align-items:center; gap:8px; padding:0 12px; height:32px;
+        flex:none; border-bottom:1px solid var(--line-2); background:var(--surface); }
+      .mark { display:flex; align-items:center; gap:7px; flex:none; }
+      .glyph { width:15px; height:15px; border-radius:4px; background:var(--blaze); flex:0 0 auto; }
+      /* status text — ONE voice; states swap text + color in place */
+      .stxt { font:600 10.5px var(--mono); color:var(--ok); white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis; min-width:0; }
+      .stxt .dim { color:var(--soft); font-weight:500; }
+      .stxt a { color:var(--blaze-ink); text-decoration:none; cursor:pointer; }
+      .stxt a:hover { text-decoration:underline; }
+      .hdr.busy .stxt, .hdr.neutral .stxt { color:var(--soft); }
+      .hdr.warn .stxt { color:var(--warn); }
+      .hdr.err .stxt { color:var(--err); }
+      /* the old pill + teammate voice fold into the status line (one voice) */
+      .conn-pill { display:none !important; }
+      .teammate-indicator { display:none !important; }
       .wm { font-weight:650; font-size:13px; letter-spacing:-.01em; }
       .hdr .sp { flex:1; }
       .qm { position:relative; width:20px; height:20px; border-radius:50%; border:1px solid var(--line);
@@ -65,7 +81,7 @@
 
       /* ── tabs ────────────────────────────────────────────────────────── */
       .tabs { display:flex; gap:2px; padding:0 8px; border-bottom:1px solid var(--line);
-        background:var(--surface); }
+        background:var(--surface); flex:none; }
       .tabs[hidden] { display:none; }
       .tab { padding:9px 12px; font-size:12.5px; color:var(--soft); font-weight:550;
         border:0; border-radius:0; background:transparent; border-bottom:2px solid transparent;
@@ -74,8 +90,8 @@
       .tab.active { color:var(--ink); border-bottom-color:var(--blaze); font-weight:650; }
 
       /* ── intro (first-open front door) ───────────────────────────────── */
-      .intro { display:none; flex-direction:column; padding:20px 20px 16px; min-height:520px; }
-      .intro.show { display:flex; }
+      .intro { display:none; flex-direction:column; padding:20px 20px 16px; }
+      .intro.show { display:flex; flex:1 1 auto; min-height:0; overflow-y:auto; }
       .h1 { font-size:19px; line-height:1.25; letter-spacing:-.01em; font-weight:600;
         margin:2px 0 0; text-wrap:balance; }
       .disc { font-size:9px; color:var(--taupe); margin:8px 0 0; line-height:1.4; }
@@ -142,8 +158,8 @@
       .signin-actions button { flex:1; }
 
       /* ── Part 8 · redeem / invite flow screens (full-height front doors) ── */
-      .flow { display:none; flex-direction:column; padding:18px 20px 16px; min-height:520px; }
-      .flow.show { display:flex; }
+      .flow { display:none; flex-direction:column; padding:18px 20px 16px; }
+      .flow.show { display:flex; flex:1 1 auto; min-height:0; overflow-y:auto; }
       .flow-back { background:none; border:0; padding:0; color:var(--soft); font-size:11px;
         font-weight:550; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
         margin-bottom:12px; width:auto; flex:0 0 auto; }
@@ -191,9 +207,35 @@
       .adv-env-opt { display:flex; align-items:center; gap:5px; cursor:pointer; }
       .adv-env-hint { font-size:11px; color:var(--fg-2); padding:0 0 6px; }
 
-      /* ── primary CTA + secondary actions (tokens foot) ───────────────── */
+      /* ── W2 toolbar: search · Save to project · ⋯ ─────────────────────── */
+      .toolrow { display:flex; align-items:center; gap:7px; padding:0 13px; height:40px;
+        flex:none; position:relative; }
+      .tksearch { flex:1; display:flex; align-items:center; gap:6px; border:1px solid var(--line-2);
+        border-radius:8px; padding:0 9px; height:28px; background:var(--surface); color:var(--soft);
+        font:500 11px var(--sans); min-width:0; cursor:text; }
+      .tksearch:focus-within { border-color:var(--blaze); box-shadow:0 0 0 3px var(--blaze-bg); }
+      .tksearch .ic-xs { width:12px; height:12px; flex:none; }
+      .tksearch input { border:0; outline:0; background:none; font:inherit; color:var(--ink);
+        flex:1; min-width:0; padding:0; }
+      .tksearch input:focus-visible { outline:none; border:0; }
+      .moremenu { position:absolute; top:38px; right:13px; z-index:60; min-width:210px;
+        background:var(--surface); border:1px solid var(--line); border-radius:9px;
+        box-shadow:0 6px 20px rgba(0,0,0,.14); padding:5px; display:grid; gap:1px; }
+      .moremenu[hidden] { display:none; }
+      .mm-item { display:flex; align-items:center; text-align:left; width:100%; border:0;
+        background:none; border-radius:6px; padding:7px 9px; font:500 11.5px var(--sans);
+        color:var(--ink-2); cursor:pointer; }
+      .mm-item:hover { background:var(--surface-2); color:var(--ink); }
+      .mm-note { padding:6px 9px 4px; font:500 10px var(--sans); color:var(--soft);
+        border-top:1px solid var(--line-2); margin-top:3px; }
+      .mm-note[hidden] { display:none; }
+
+      /* ── W2 scrolling list region (the product) ───────────────────────── */
+      .listwrap { flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 13px 12px; }
+
+      /* ── primary CTA + secondary actions (tokens verbs bar — pinned) ──── */
       .foot { border-top:1px solid var(--line); padding:11px 13px 12px; background:var(--surface);
-        margin:12px -14px -14px; }
+        flex:none; }
       .cta { width:100%; background:var(--blaze); color:#fff; border:none; border-radius:8px;
         padding:10px; font-size:13px; font-weight:650; display:flex; align-items:center;
         justify-content:center; gap:8px; }
@@ -209,19 +251,19 @@
       .ghost.off[disabled] { opacity:.45; }   /* handoff: gated PR reads as clearly inert */
       .ghost .gh-mark { width:12px; height:12px; flex:none; }
       /* diff strip — "N changed since your last preview", above the CTA (frame B) */
-      .diffbox { border:1px solid var(--line); border-radius:9px; background:var(--surface-2);
-        overflow:hidden; margin-bottom:9px; }
-      .diffh { padding:5px 10px; font-size:10px; font-weight:700; text-transform:uppercase;
-        letter-spacing:.04em; color:var(--soft); background:var(--surface);
-        border-bottom:1px solid var(--line-2); }
-      .diffrows { max-height:96px; overflow-y:auto; }
-      .diffr { display:flex; align-items:center; gap:7px; padding:5px 10px;
-        font:500 10.5px var(--mono); color:var(--ink); }
-      .diffr + .diffr { border-top:1px solid var(--line-2); }
-      .diffr .dsw { width:12px; height:12px; border-radius:4px; border:1px solid rgba(0,0,0,.08); flex:none; }
-      .diffr .dnm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .diffr .darr { color:var(--taupe); flex:none; }
-      .diffr em { color:var(--soft); font-style:italic; }
+      /* W2/W3: changes live IN the list — pinned CHANGED group + filter bar */
+      .tk-tier-head.chg td { background:var(--info-bg); color:var(--info-ink); cursor:pointer; }
+      .tk-tier-head.chg .tk-tier-badge { background:#dbe8f7; color:var(--info-ink); }
+      .tk-was { font:500 9.5px var(--mono); color:var(--soft); white-space:nowrap; flex:none; }
+      .chgfilterbar { display:flex; align-items:center; gap:8px; padding:6px 10px;
+        background:var(--info-bg); border:1px solid var(--info-line); border-radius:8px;
+        margin:10px 0 0; font:600 10.5px var(--sans); color:var(--info-ink); }
+      .chgfilterbar .clear { display:inline-flex; align-items:center; gap:4px; background:none;
+        border:0; color:inherit; font:inherit; padding:0; cursor:pointer; }
+      .chgfilterbar .clear:hover { text-decoration:underline; }
+      .chgfilterbar[hidden] { display:none; }
+      .cta .n { cursor:pointer; }
+      .cta .n.on { background:rgba(255,255,255,.4); }
       /* why-row — the reason a control is inert (never disable without saying why) */
       .whyrow { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px;
         font-size:11px; font-weight:500; color:var(--soft); text-align:center; line-height:1.4; }
@@ -231,8 +273,12 @@
       .whyrow a:hover { text-decoration:underline; }
 
       /* ── views ─────────────────────────────────────────────────────── */
-      .view { display: none; padding: 14px; }
-      .view.active { display: block; }
+      /* W2: the tokens view is a pinned flex column (toolbar · scrolling list ·
+         verbs bar); storybook/settings keep a simple scrolling document. */
+      .view { display: none; }
+      .view.active { flex:1 1 auto; min-height:0; }
+      #view-tokens.active { display:flex; flex-direction:column; overflow:hidden; }
+      #view-storybook.active, #view-settings.active { display:block; overflow-y:auto; padding:14px; }
 
       /* ── settings note ────────────────────────────────────────────── */
       .settings-note { font-size: 11px; color: var(--soft); margin: 0 0 12px; line-height: 1.5; }
@@ -356,12 +402,17 @@
         background: var(--surface); color: var(--ink-2); cursor: pointer; user-select: none; flex: 0 0 auto;
       }
       .tk-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
-      .tk-table-wrap { max-height: 340px; overflow-y: auto; border: 1px solid var(--line-2); border-radius: 6px; margin-top: 8px; }
+      /* W2: the outer .listwrap owns scrolling — no inner clamp */
+      .tk-table-wrap { border: 1px solid var(--line-2); border-radius: 6px; margin-top: 8px; }
       .tk-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+      /* W2: no column-header row — the group headers carry the structure (ref anatomy) */
+      .tk-table thead { display: none; }
       .tk-table th {
         position: sticky; top: 0; background: var(--surface-2); text-align: left; font-weight: 600;
         padding: 6px 8px; border-bottom: 1px solid var(--line); color: var(--soft); z-index: 1;
       }
+      /* removed-token row in the CHANGED group */
+      .tk-removed { font-style: italic; color: var(--soft); font-size: 10.5px; }
       .tk-table td { padding: 4px 8px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
       .tk-table tbody tr:hover { background: var(--surface-2); }
       .tk-col-icon { width: 30px; }
@@ -392,6 +443,14 @@
         background: transparent; color: var(--taupe); font-size: 13px; line-height: 1; cursor: pointer; flex: 0 0 auto;
       }
       .tk-del:hover { color: var(--err); }
+      /* W2 row diet — rare per-row actions (◈ usages · ✕ remove) reveal on
+         hover or keyboard focus; 114 always-visible delete buttons was noise. */
+      .tk-table tbody tr .tk-del, .tk-table tbody tr .tk-uses { visibility: hidden; }
+      .tk-table tbody tr:hover .tk-del, .tk-table tbody tr:focus-within .tk-del,
+      .tk-table tbody tr:hover .tk-uses, .tk-table tbody tr:focus-within .tk-uses { visibility: visible; }
+      /* value cell with a "was <old>" hint (changed rows) */
+      .tk-val-cell { display: flex; align-items: center; gap: 6px; }
+      .tk-val-cell .tk-val { flex: 1; min-width: 0; }
       .tk-empty { padding: 20px; text-align: center; color: var(--soft); font-size: 11px; line-height: 1.6; }
       .tk-rawwrap { margin-top: 8px; }
       .tk-rawwrap[hidden] { display: none; }
@@ -484,7 +543,7 @@
 
       /* ── tier group headers + dimension swatch (U3 · F15/F14) ─────────── */
       .tk-tier-head td {
-        position: sticky; top: 28px;
+        position: sticky; top: 0;  /* W2: no thead above — headers stick to the listwrap top */
         background: var(--line-2); font-size: 10px; font-weight: 700;
         text-transform: uppercase; letter-spacing: .06em; color: var(--soft);
         padding: 3px 8px; pointer-events: none;
@@ -744,8 +803,10 @@
          in-content wordmark is dropped. The connection/verify status pill leads
          as the primary element; the small orange mark is a quiet left anchor and
          the ? help sits at the right. Applies across every view. -->
-    <div class="hdr">
+    <div class="hdr" id="hdr">
       <div class="mark"><div class="glyph"></div></div>
+      <!-- W2 · the ONE status voice — ambient state + action receipts swap in place -->
+      <span class="stxt" id="statusText" role="status" aria-live="polite" aria-atomic="true"></span>
       <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">—</span>
@@ -924,26 +985,46 @@
       <button class="tab" id="tb-nav-settings">Settings</button>
     </div>
 
-    <!-- ── TOKENS VIEW ─────────────────────────────────────────────────── -->
+    <!-- ── TOKENS VIEW (W2: toolbar · scrolling list · pinned verbs) ────── -->
     <div id="view-tokens" class="view active">
-      <div class="tk-head">
-        <label>Tokens <span class="hint">(from Figma Variables — editable)</span></label>
-        <span class="hint" id="darkModeBadge" hidden style="font-weight:600;" title="Both Light and Dark values push together; live app preview toggles.">🌗&nbsp;Light + Dark detected — previews will toggle</span>
-        <div class="tk-head-right">
-          <span class="hint" style="font-weight:400;cursor:pointer;">
-            <input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync from Figma<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
-          </span>
-          <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables" aria-label="Reload tokens from Figma Variables">
-            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
-          </button>
-          <button class="tk-raw-btn" id="publishTokens" title="Save the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Save tokens to project" style="width:auto;padding:0 8px;font-weight:600;">Save to project&nbsp;→</button>
+      <!-- W2 toolbar: search (replaces the Filter chips) · Save to project · ⋯ -->
+      <div class="toolrow">
+        <label class="tksearch"><svg class="ic-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="tkSearch" placeholder="Search tokens…" aria-label="Search tokens by name or value" /></label>
+        <button class="tk-raw-btn" id="publishTokens" title="Save the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Save tokens to project" style="width:auto;padding:0 8px;font-weight:600;white-space:nowrap;">Save to project&nbsp;→</button>
+        <button class="tk-raw-btn" id="moreBtn" title="More" aria-label="More actions" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
+        <!-- ⋯ overflow menu — rare controls leave the toolbar (W2) -->
+        <div class="moremenu" id="moreMenu" hidden>
+          <label class="mm-item"><input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 6px 0 0;" />Auto-sync from Figma<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span></label>
+          <button class="mm-item" id="mmSyncNow" type="button">Sync from Figma now</button>
+          <button class="mm-item" id="mmApplyTheme" type="button">Apply a theme&nbsp;›</button>
+          <button class="mm-item" id="mmViewCode" type="button">View code&nbsp;<span class="mono" style="font-size:10px;">&lt;/&gt;</span></button>
+          <button class="mm-item" id="mmSyncVars" type="button">Sync Variables into Figma</button>
+          <div class="mm-note" id="darkModeBadge" hidden title="Both Light and Dark values push together; live app preview toggles.">Light + Dark detected — previews will toggle</div>
         </div>
       </div>
 
+      <!-- W2: the scrolling region — the list IS the product -->
+      <div class="listwrap" id="listwrap">
+      <!-- W3: changed-only filter (toggled by the CTA count chip / CHANGED header) -->
+      <div class="chgfilterbar" id="chgFilterBar" hidden>
+        <svg class="ic-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:12px;height:12px;"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+        Showing changed only<span style="flex:1"></span>
+        <button class="clear" id="chgFilterClear" type="button">Clear <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px;"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
       <div class="tk-filters" id="tkFilters" hidden></div>
 
       <div class="tk-table-wrap" id="tkTableWrap">
         <table class="tk-table">
+          <!-- W2: the thead is display:none (group headers carry the structure);
+               the colgroup keeps table-layout:fixed column widths without it. -->
+          <colgroup>
+            <col style="width:30px" />
+            <col />
+            <col style="width:200px" />
+            <col style="width:30px" />
+          </colgroup>
           <thead>
             <tr>
               <th class="tk-col-icon"></th>
@@ -957,7 +1038,7 @@
       </div>
 
       <!-- ── graft picker (U3 · P4) — copy a source component's theme onto a target ── -->
-      <div class="graft" id="graftPanel">
+      <div class="graft" id="graftPanel" hidden>
         <button class="graft-toggle" id="graftToggle" type="button">
           <span id="graftToggleLabel">Apply a theme ▸</span>
         </button>
@@ -988,26 +1069,20 @@
           <button id="syncvars">Sync Variables</button>
         </div>
       </div>
+      </div><!-- /listwrap -->
 
-      <!-- C4 · receipt band — bordered result line with a state dot (red=error,
-           green=success, neutral otherwise). Collapses to nothing when empty.
-           Keeps the B6 role="status" + aria-live so announcements don't regress. -->
-      <div class="receipt" id="status" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
+      <!-- legacy receipt band — W2 folds all status into the header line; kept in
+           the DOM (hidden) so setStatus/aria plumbing has a stable anchor. -->
+      <div class="receipt" id="status" data-state="empty" hidden></div>
 
+      <!-- W2 verbs bar — pinned; verbs only (the spine). No diff strip: changes
+           live IN the list (pinned CHANGED group). -->
       <div class="foot">
-        <!-- diff strip — the changes the CTA count refers to, listed above it (frame B).
-             Populated by renderDiffStrip(); hidden when nothing has changed since the
-             last preview. -->
-        <div class="diffbox" id="diffBox" hidden>
-          <div class="diffh" id="diffBoxHead"></div>
-          <div class="diffrows" id="diffBoxRows"></div>
-        </div>
         <button class="cta" id="cta">
           <span id="ctaLabel">Load from App</span><span class="n" id="ctaCount" hidden></span>
         </button>
         <!-- shown only when the CTA is disabled (previewed, nothing changed). -->
         <div class="whyrow" id="ctaWhy" hidden>Nothing changed since your last preview</div>
-        <!-- ONE Preview verb (the CTA). Secondary actions: durable save + Open PR. -->
         <div class="sec-actions">
           <button class="ghost" id="ghSave">Save to project&nbsp;→</button>
           <button class="ghost off" id="ghPr" disabled>Open PR</button>
@@ -1105,17 +1180,6 @@
           <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
           <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
 
-          <!-- relocated low-key capabilities (previously top-level toolbar buttons) -->
-          <div class="adv-relocated" style="margin-top:12px;border-top:1px solid var(--line-2);padding-top:10px;display:grid;gap:8px;">
-            <div>
-              <button class="set-test-btn" id="advSyncVars" type="button" style="width:auto;padding:5px 12px;">Sync Variables into Figma</button>
-              <span class="hint" style="display:block;margin-top:4px;">Creates/updates Figma Variables from the bridge&rsquo;s resolved tokens.</span>
-            </div>
-            <div>
-              <button class="set-test-btn" id="advRawJson" type="button" style="width:auto;padding:5px 12px;">Raw JSON editor</button>
-              <span class="hint" style="display:block;margin-top:4px;">Edit the working token set as JSON on the Tokens tab.</span>
-            </div>
-          </div>
         </div>
       </details>
 
@@ -1153,7 +1217,13 @@
         var vids = Object.values(VIEWS);
         for (var i = 0; i < vids.length; i++) {
           var v = $(vids[i]);
-          if (v) v.style.display = vids[i] === VIEWS[key] ? 'block' : 'none';
+          // W2: the class CSS owns each view's display (tokens = flex column);
+          // inline display only ever hides — '' lets .view.active win.
+          if (v) {
+            var on = vids[i] === VIEWS[key];
+            v.style.display = on ? '' : 'none';
+            v.classList.toggle('active', on);
+          }
         }
         var nids = Object.values(NAV);
         for (var j = 0; j < nids.length; j++) {
@@ -1177,14 +1247,58 @@
       function statusIsSuccess(html) {
         return /✓|\bcreated\b|\bpushed\b|\bsynced\b|\bupdated\b|\bloaded\b|\bready\b|\bsaved\b/i.test(String(html));
       }
+      // ── W2 · the ONE status voice ──────────────────────────────────────
+      // setStatusLine writes the 32px header line; states swap text + color IN
+      // PLACE (ok green · busy/neutral muted · warn amber · err red). Inline
+      // anchors stay live (innerHTML) — Retry / Refresh links bind by id after.
+      // No-op while the front door owns the header (tabs hidden).
+      var _stTransient = { kind: '', at: 0 };
+      var ST_HOLD_MS = 8000, ST_HOLD_ERR_MS = 30000;
+      function setStatusLine(kind, html) {
+        var hdr = $('hdr'), el = $('statusText');
+        if (!hdr || !el) return;
+        if ($('tabs') && $('tabs').hidden) return;  // intro/sign-in screens own the header
+        hdr.className = 'hdr' + (kind && kind !== 'ok' ? ' ' + kind : '');
+        el.innerHTML = html || '';
+        _stTransient = { kind: kind, at: new Date().getTime() };
+      }
+      // setStatus keeps its NAME + SIGNATURE (58 call sites + the onboarding
+      // step-4 monkey-patch depend on it) but now routes into the status line.
+      // The legacy #status receipt band stays hidden in the DOM.
       function setStatus(html, isErr) {
-        var el = $('status');
         var empty = !html || String(html).trim() === '';
-        var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
-        el.setAttribute('data-state', state);
-        // Wrap in one flex child — the .receipt container is display:flex (for
-        // the status dot), so bare inline nodes would each become flex items.
-        el.innerHTML = empty ? '' : '<span class="receipt-msg">' + html + '</span>';
+        if (empty) { _stTransient = { kind: '', at: 0 }; renderIdleStatus(true); return; }
+        var kind = isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral');
+        setStatusLine(kind, html);
+      }
+      // Idle composer — the ambient line, refreshed by the existing 5s conn poll
+      // (setConnState calls this). Held off while a transient receipt is fresh.
+      function renderIdleStatus(force) {
+        var now = new Date().getTime();
+        var hold = _stTransient.kind === 'err' ? ST_HOLD_ERR_MS : ST_HOLD_MS;
+        if (!force && _stTransient.at && (now - _stTransient.at) < hold) return;
+        _stTransient = { kind: '', at: 0 };
+        var n = Object.keys(tokenSet || {}).length;
+        if (lsGet(LS.demo) === 'true') {
+          setStatusLine('ok', '● Demo — read-only <span class="dim">· ' + n + ' tokens</span>');
+          _stTransient = { kind: '', at: 0 };
+          return;
+        }
+        var st = ($('connPill') && $('connPill').getAttribute('data-state')) || 'disconnected';
+        if (st === 'green-live' || st === 'green-stale') {
+          var ts = lsGet(LS.lastVerifiedAt);
+          setStatusLine('ok', '● In sync with Figma <span class="dim">· ' + n + ' tokens' +
+            (ts ? ' · verified ' + fmtElapsed(ts) : '') + '</span>');
+        } else if (st === 'amber') {
+          setStatusLine('busy', '○ Connecting…');
+        } else if (st === 'red') {
+          setStatusLine('err', '● Can’t reach the bridge — nothing was pushed · <a id="stRetry">Retry</a>');
+          var r = document.getElementById('stRetry');
+          if (r) r.onclick = function() { connCheck(); $('committed').click(); };
+        } else {
+          setStatusLine('neutral', '');
+        }
+        _stTransient = { kind: '', at: 0 };         // idle renders never hold
       }
       function setSbStatus(html, isErr) {
         var el = $('status-sb');
@@ -1374,8 +1488,44 @@
       wireSettingsTest('appUrl', 'appTest',   'appResult',    'ping');
 
       // §8 · relocated capabilities (previously top-level toolbar buttons).
-      $('advSyncVars').onclick = function() { showView('tokens'); $('syncvars').click(); };
-      $('advRawJson').onclick  = function() { showView('tokens'); if (!rawOpen) toggleRaw(); };
+      // §C · ⋯ overflow menu — rare controls' new home (replaces the Settings rows,
+      // the toolbar reload icon, the </> toggle, the graft tile trigger).
+      $('moreBtn').onclick = function(e) {
+        e.stopPropagation();
+        var m = $('moreMenu'), open = m.hidden;
+        m.hidden = !open;
+        $('moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+      document.addEventListener('click', function(e) {
+        var m = $('moreMenu');
+        if (m && !m.hidden && !m.contains(e.target) && e.target !== $('moreBtn')) {
+          m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { var m = $('moreMenu'); if (m && !m.hidden) { m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); } }
+      });
+      function closeMoreMenu() { var m = $('moreMenu'); if (m) m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); }
+      $('mmSyncNow').onclick    = function() { closeMoreMenu(); $('reload').click(); };
+      $('mmViewCode').onclick   = function() { closeMoreMenu(); toggleRaw(); };
+      $('mmSyncVars').onclick   = function() { closeMoreMenu(); $('syncvars').click(); };
+      var graftShown = false;   // W2 · the Apply-a-theme tile appears only via the ⋯ menu
+      $('mmApplyTheme').onclick = function() {
+        closeMoreMenu();
+        graftShown = true;
+        var gp = $('graftPanel'); if (gp) gp.hidden = false;
+        $('graftToggle').click();                   // opens the picker body
+        var lw = $('listwrap'); if (lw) lw.scrollTop = lw.scrollHeight;   // bring the panel into view (no scrollIntoView — app rule)
+      };
+      // W2 · toolbar search — filters rows by name or value as you type.
+      $('tkSearch').oninput = function(e) {
+        tokenQuery = e.target.value || '';
+        renderTokenTable();
+      };
+      // deferred CHANGED re-render lands once the edited value field blurs
+      $('listwrap').addEventListener('focusout', function() {
+        setTimeout(flushPendingChgRender, 0);       // let focus settle first
+      });
 
       // §8 · reflect the connection state in Settings copy: once connected, the
       // hand-entry paragraph flips to a reassurance and Advanced shows a synced pill.
@@ -1488,6 +1638,8 @@
       // to the total token load. NOTE (accepted limit): compares tokenSet only —
       // darkTokenSet changes are not counted here.
       var chgList = [], chgSet = {}, hasBaseline = false, _snapRaw = null, _snapObj = null;
+      var filterChanged = false;    // W3 · changed-only list filter (count chip / CHANGED header)
+      var tokenQuery = '';          // W2 · toolbar search query
       function refreshChanges() {
         var raw = lsGet(LS.lastPreviewedMap);
         if (raw !== _snapRaw) {                     // memoize the parse
@@ -1501,13 +1653,22 @@
         for (var i = 0; i < chgList.length; i++) chgSet[chgList[i]] = true;
       }
       function markPreviewed() { lsSet(LS.lastPreviewedMap, JSON.stringify(tokenSet)); }
+      // W3 · toggle the changed-only view; the count chip and CHANGED header both call this.
+      function toggleChangedFilter() {
+        filterChanged = !filterChanged;
+        renderTokenTable();
+        updateCta();                              // count chip gets/loses its .on fill
+      }
 
       function applyTokens(tokens, darkTokens, hasDark, isAuto) {
         darkTokenSet = (darkTokens && Object.keys(darkTokens).length) ? darkTokens : null;
         hasDarkMode = !!hasDark;
         renderDarkModeBadge();
         setTokenSet(tokens, { silent: true });
-        setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables' + (isAuto ? ' (auto).' : '.'));
+        // W2 one voice: auto pulls stay silent (the idle line already carries the
+        // count); a manual load gets a brief receipt.
+        if (isAuto) renderIdleStatus(false);
+        else setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables.');
         if (isAuto) maybeDriftCheck(false);       // §6 · throttled drift check on the sync path (never per 1.5s poll)
       }
 
@@ -1616,6 +1777,8 @@
           $('ghSave').disabled = true;
           $('ghPr').disabled = true; $('ghPr').classList.add('off');
           setPrWhy('Demo mode is read-only — PRs are disabled.');
+          filterChanged = false;
+          var dfb = $('chgFilterBar'); if (dfb) dfb.hidden = true;
           renderDiffStrip();
           return;
         }
@@ -1636,6 +1799,14 @@
             count.textContent = chgList.length + (chgList.length === 1 ? ' change' : ' changes');
             count.hidden = false;
           }
+        }
+        // W3 · the count chip doubles as the changed-only filter toggle
+        count.classList.toggle('on', filterChanged);
+        count.title = filterChanged ? 'Show all tokens' : 'Show only the changed tokens';
+        if (filterChanged && (!hasBaseline || chgList.length === 0)) {
+          // filter no longer applicable (baseline reset / all previewed) → drop it
+          filterChanged = false;
+          var fb2 = $('chgFilterBar'); if (fb2) fb2.hidden = true;
         }
         // Save to project needs a working set.
         $('ghSave').disabled = (n === 0);
@@ -1663,35 +1834,28 @@
         // <cloudBase>/dashboard/projects/<id>/connectors instead of Settings.
         if (c) c.onclick = function() { showView('settings'); var a = $('advSettings'); if (a) a.open = true; var g = $('githubUrl'); if (g) g.focus(); };
       }
-      // Diff strip — lists the changes the CTA count refers to. Rows via
-      // createElement/textContent (values are user data). Signature-guarded so the
-      // 1.5s auto-poll doesn't churn the DOM (stable screenshots).
-      var _diffSig = null;
+      // W2: changes live IN the list (pinned CHANGED group), not in a strip.
+      // renderDiffStrip is now the RE-RENDER TRIGGER: when the change-set signature
+      // moves, re-render the table so the CHANGED group / tints / was-hints track —
+      // signature-guarded (no churn under the 1.5s auto-poll), and deferred while a
+      // value input has focus (a rebuild mid-keystroke would destroy the field).
+      var _diffSig = null, _pendingChgRender = false;
       function renderDiffStrip() {
-        var box = $('diffBox'); if (!box) return;
-        var show = lsGet(LS.demo) !== 'true' && ctaState() === 'preview' && hasBaseline && chgList.length > 0;
-        if (!show) { box.hidden = true; box.removeAttribute('data-sig'); _diffSig = null; return; }
-        var sig = chgList.map(function(k){ return k + '' + tokenSet[k]; }).join('');
-        if (sig === _diffSig) { box.hidden = false; return; }   // unchanged → no rebuild
-        _diffSig = sig;
-        box.hidden = false;
-        $('diffBoxHead').textContent = chgList.length + ' changed since your last preview';
-        var rows = $('diffBoxRows'); rows.innerHTML = '';
-        for (var i = 0; i < chgList.length; i++) {
-          var name = chgList[i], oldVal = _snapObj[name], newVal = tokenSet[name];
-          var isColor = inferType(newVal !== undefined ? newVal : (oldVal !== undefined ? oldVal : '')) === 'COLOR';
-          var r = document.createElement('div'); r.className = 'diffr';
-          if (isColor && oldVal !== undefined) { var so = document.createElement('span'); so.className = 'dsw'; so.style.background = oldVal; r.appendChild(so); }
-          var nm = document.createElement('span'); nm.className = 'dnm'; nm.textContent = name; r.appendChild(nm);
-          var ar = document.createElement('span'); ar.className = 'darr'; ar.textContent = '→'; r.appendChild(ar);
-          if (isColor && newVal !== undefined) { var sn = document.createElement('span'); sn.className = 'dsw'; sn.style.background = newVal; r.appendChild(sn); }
-          var vv = document.createElement('span');
-          if (newVal === undefined) { var em = document.createElement('em'); em.textContent = '(removed)'; vv.appendChild(em); }
-          else if (oldVal === undefined) { vv.textContent = newVal; var em2 = document.createElement('em'); em2.textContent = ' (new)'; vv.appendChild(em2); }
-          else vv.textContent = newVal;
-          r.appendChild(vv);
-          rows.appendChild(r);
+        var sig = hasBaseline ? chgList.map(function(k){ return k + '' + tokenSet[k]; }).join('') : '';
+        if (sig === _diffSig) return;
+        var ae = document.activeElement;
+        if (ae && ae.classList && ae.classList.contains('tk-val')) {
+          _pendingChgRender = true;                 // re-render on blur (see buildRow)
+          return;
         }
+        _diffSig = sig;
+        renderTokenTable();
+      }
+      function flushPendingChgRender() {
+        if (!_pendingChgRender) return;
+        _pendingChgRender = false;
+        _diffSig = null;                            // force the rebuild
+        renderDiffStrip();
       }
       $('cta').onclick      = function() {
         var t = $('cta').getAttribute('data-act');
@@ -1703,9 +1867,14 @@
         }
         if (t) $(t).click();
       };
+      // W3 · the count is a control — tapping it toggles the changed-only filter.
+      $('ctaCount').onclick = function(e) {
+        e.stopPropagation();                        // never trigger the CTA's preview
+        if (hasBaseline && chgList.length) toggleChangedFilter();
+      };
+      $('chgFilterClear').onclick = function() { if (filterChanged) toggleChangedFilter(); };
       $('ghSave').onclick   = function() { $('publishTokens').click(); };
       $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
-      $('ghReload').onclick = function() { $('reload').click(); };
 
       // ── designer-default intro (Part 8) + redeem/invite flows + re-openable help ──
       function escHtml(s) {
@@ -1725,6 +1894,9 @@
         $('view-tokens').style.display = 'none';
         $('view-storybook').style.display = 'none';
         $('view-settings').style.display = 'none';
+        $('view-tokens').classList.remove('active');
+        $('view-storybook').classList.remove('active');
+        $('view-settings').classList.remove('active');
       }
 
       // NB: the old applyIntroState() (paste↔invite stateful-primary juggling) is
@@ -1833,6 +2005,7 @@
         hideHeaderLabel();
         showView('tokens');
         updateCta();
+        renderIdleStatus(true);                   // W2 · seed the one-voice status line
       }
 
       function showOrgKeyFlow() {
@@ -2357,12 +2530,9 @@
         return copied;
       }
       function appendReceiptBtn(snippet) {
-        var btn = document.createElement('button');
-        btn.className = 'receipt-btn'; btn.textContent = 'Copy receipt';
-        btn.onclick = function() {
-          copyReceipt(snippet).then(function(ok) { btn.textContent = ok ? 'Copied!' : 'Copy failed'; btn.disabled = true; });
-        };
-        $('status').appendChild(btn);
+        // W2 one-voice status line — the receipt copy button is retired (the
+        // preview tab has already opened by the time the receipt lands).
+        // copyReceipt itself stays: the invite flow + 404 guide use it.
       }
 
       // ── Preview-app resolution (founder rule 2026-08-11) ───────────────
@@ -2421,7 +2591,10 @@
         }
 
         // Path (1) — the developer's app is up → live preview on it.
-        setStatus('Posting preview…');
+        // W2 busy voice — name the delta the user cares about (full body is still
+        // pushed; see the delta-push deviation note in the spec).
+        var chgN = hasBaseline ? chgList.length : Object.keys(tokenSet).length;
+        setStatus('○ Pushing ' + chgN + ' changed token' + (chgN === 1 ? '' : 's') + '…');
         try {
           var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
@@ -2438,13 +2611,14 @@
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           livePreviewId = d.id;
           markPreviewed();                          // §1 baseline → CTA count resets to 0
+          filterChanged = false;                    // W3 · the delta is gone; drop the filter
           updateCta();                              // session live → Open PR unlocks
           var url = target.url + (target.url.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Preview ready: ' + d.id });
-          setStatus('Preview <b>' + d.id + '</b> created. <a href="' + url + '" target="_blank">Open app ↗</a>' +
-            ($('autoSync').checked ? ' — live editing on.' : '.'));
-          appendReceiptBtn(buildReceiptSnippet(Object.keys(tokenSet).length, sbRows ? sbRows.length : 0));
+          // ok voice — "Preview" kept in the string (onboarding step-4 sniffs it)
+          setStatus('● Preview live · ' + chgN + ' token' + (chgN === 1 ? '' : 's') + ' pushed · just now' +
+            ($('autoSync').checked ? ' — live editing on.' : ''));
         } catch(e) { setStatus('Preview failed: ' + e.message, true); }
       };
 
@@ -2454,7 +2628,7 @@
         var sbUrl  = $('storybookUrl').value.trim().replace(/\/$/, '');
         if (!origin) return setStatus('Set Bridge origin in Settings.', true);
         if (!sbUrl)  return setStatus('Set Storybook URL in Settings.', true);
-        setStatus('Posting preview…');
+        setStatus('○ Pushing tokens to Storybook…');
         try {
           var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
@@ -2783,24 +2957,44 @@
         body.innerHTML = '';
         refreshChanges();                         // so buildRow can tint changed rows
 
+        // W3 · changed-only filter bar visibility tracks the filter state
+        var fb = $('chgFilterBar');
+        if (fb) fb.hidden = !filterChanged;
+
+        // W2 · search (replaces the Filter chips) — matches name or value
+        var q = (tokenQuery || '').toLowerCase();
+        function matchesQuery(n) {
+          if (!q) return true;
+          return n.toLowerCase().indexOf(q) !== -1 ||
+            String(tokenSet[n] === undefined ? '' : tokenSet[n]).toLowerCase().indexOf(q) !== -1;
+        }
+
         var hasFilter = Object.keys(tokenFilters).length > 0;
         var names = Object.keys(tokenSet);
         if (hasFilter) names = names.filter(function(n) { return !!tokenFilters[groupOf(n)]; });
+        names = names.filter(matchesQuery);
+        // the changed rows render in their own pinned group (pull-up variant);
+        // removed tokens (in the baseline, gone from the set) get a row too, so
+        // the group count always matches the CTA's "N changes".
+        var chgNames = chgList.filter(function(n) { return matchesQuery(n); });
+        names = names.filter(function(n) { return !chgSet[n]; });
+        if (filterChanged) names = [];            // W3: changed-only view
         names.sort(function(a, b) {
           var ra = tierRank(a), rb = tierRank(b);
           if (ra !== rb) return ra - rb;
           return a < b ? -1 : a > b ? 1 : 0;
         });
 
-        if (!names.length) {
+        if (!names.length && !chgNames.length) {
           var trE = document.createElement('tr');
           var tdE = document.createElement('td');
           tdE.colSpan = 4;
           var hasAny = Object.keys(tokenSet).length > 0;
           if (hasAny) {
-            // filtered, no match
-            tdE.appendChild(buildEmptyState('⊘', 'No tokens match the filter',
-              'Clear the filter chips to see all tokens.', null, null));
+            // searched/filtered, no match
+            tdE.appendChild(buildEmptyState('⊘', 'No tokens match',
+              q ? 'Nothing matches “' + tkEscape(tokenQuery) + '” — clear the search to see all tokens.'
+                : 'Clear the filter to see all tokens.', null, null));
           } else if (!lsGet(LS.origin)) {
             // never configured → open the Connect overlay at step 1
             tdE.appendChild(buildEmptyState('◎', 'Connect your project',
@@ -2831,6 +3025,7 @@
         // Extracted so both the tier-grouped and type-grouped paths share it.
         function buildRow(name) {
           var tr = document.createElement('tr');
+          tr.tabIndex = 0;                        // W2 row diet: actions reveal on hover/focus-within
 
           var tdIcon = document.createElement('td');
           tdIcon.className = 'tk-col-icon';
@@ -2864,7 +3059,17 @@
           input.className = 'tk-val';
           input.setAttribute('aria-label', name + ' value');
           input.value = tokenSet[name];
-          if (chgSet[name]) input.classList.add('chg');   // info-blue: changed since last preview
+          if (chgSet[name]) {
+            input.classList.add('chg');           // info-blue: changed since last preview
+            // "was <old>" hint — the delta readable in place (W2)
+            if (_snapObj && _snapObj[name] !== undefined) {
+              tdVal.className = 'tk-val-cell';
+              var was = document.createElement('span');
+              was.className = 'tk-was';
+              was.textContent = 'was ' + _snapObj[name];
+              tdVal.appendChild(was);
+            }
+          }
           input.oninput = (function(rowName, iconCell, inputEl) {
             return function() {
               var raw = inputEl.value;
@@ -2913,6 +3118,41 @@
           htr.innerHTML = '<td colspan="4"><span>' + tkEscape(label) + '</span>'
             + '<span class="tk-tier-badge">' + count + '</span></td>';
           body.appendChild(htr);
+        }
+
+        // W2 · CHANGED group — pinned first, info-blue, same header anatomy as the
+        // type groups. The header is tappable (W3: toggles the changed-only filter).
+        if (chgNames.length) {
+          var ctr = document.createElement('tr');
+          ctr.className = 'tk-tier-head chg';
+          ctr.setAttribute('role', 'button');
+          ctr.title = filterChanged ? 'Show all tokens' : 'Show only the changed tokens';
+          ctr.innerHTML = '<td colspan="4"><span>Changed · since last preview</span>'
+            + '<span class="tk-tier-badge">' + chgNames.length + '</span></td>';
+          ctr.onclick = toggleChangedFilter;
+          body.appendChild(ctr);
+          for (var ci = 0; ci < chgNames.length; ci++) {
+            var cn = chgNames[ci];
+            if (tokenSet[cn] !== undefined) { body.appendChild(buildRow(cn)); continue; }
+            // removed since last preview — no live value to edit
+            var rtr = document.createElement('tr');
+            var rIcon = document.createElement('td'); rIcon.className = 'tk-col-icon';
+            rIcon.innerHTML = iconCellHtml(cn, (_snapObj && _snapObj[cn]) || '');
+            rtr.appendChild(rIcon);
+            var rName = document.createElement('td');
+            var rSpan = document.createElement('span'); rSpan.className = 'tk-name'; rSpan.textContent = cn;
+            rName.appendChild(rSpan); rtr.appendChild(rName);
+            var rVal = document.createElement('td'); rVal.className = 'tk-val-cell';
+            if (_snapObj && _snapObj[cn] !== undefined) {
+              var rw = document.createElement('span'); rw.className = 'tk-was';
+              rw.textContent = 'was ' + _snapObj[cn]; rVal.appendChild(rw);
+            }
+            var rem = document.createElement('span'); rem.className = 'tk-removed';
+            rem.textContent = '(removed)'; rVal.appendChild(rem);
+            rtr.appendChild(rVal);
+            var rAct = document.createElement('td'); rAct.className = 'tk-col-action'; rtr.appendChild(rAct);
+            body.appendChild(rtr);
+          }
         }
 
         // Grouping (C2). A real resolved tier map still wins (unchanged behavior).
@@ -3300,37 +3540,11 @@
         rawEditTimer = setTimeout(applyRawFromText, 300);
       });
 
-      // ── filter chips (§5) — view-only, mirrors storybook renderChips() ───
+      // ── W2: filter chips retired — the toolbar SEARCH replaces them. The chip
+      // machinery (tokenFilters/tokenFilterOpen) stays inert; #tkFilters stays hidden.
       function renderTokenChips() {
         var box = $('tkFilters');
-        box.innerHTML = '';
-        if (rawOpen) { box.hidden = true; return; }              // raw editor replaces the table view
-        var groups = tokenGroups();
-        if (groups.length <= 1) { box.hidden = true; return; }   // hidden if one group
-        box.hidden = false;
-
-        var filterChip = document.createElement('span');
-        filterChip.className = 'tk-chip' + (tokenFilterOpen ? ' active' : '');
-        filterChip.textContent = 'Filter';
-        filterChip.onclick = function() {
-          tokenFilterOpen = !tokenFilterOpen;
-          if (!tokenFilterOpen) tokenFilters = {};   // collapsing clears the filter
-          renderTokenChips(); renderTokenTable();
-        };
-        box.appendChild(filterChip);
-
-        if (!tokenFilterOpen) return;                // groups hidden until expanded
-
-        groups.forEach(function(group) {
-          var chip = document.createElement('span');
-          chip.className = 'tk-chip' + (tokenFilters[group] ? ' active' : '');
-          chip.textContent = group;
-          chip.onclick = function() {
-            if (tokenFilters[group]) delete tokenFilters[group]; else tokenFilters[group] = true;
-            renderTokenChips(); renderTokenTable();
-          };
-          box.appendChild(chip);
-        });
+        if (box) { box.innerHTML = ''; box.hidden = true; }
       }
 
       // ── raw editor toggle (</>) (§6) ─────────────────────────────────────
@@ -3340,7 +3554,7 @@
         rawOpen = !rawOpen;
         $('tkRawWrap').hidden = !rawOpen;
         $('tkTableWrap').hidden = rawOpen;
-        var gp = $('graftPanel'); if (gp) gp.hidden = rawOpen;   // hide graft with the table (U3 · P4)
+        var gp = $('graftPanel'); if (gp) gp.hidden = rawOpen || !graftShown;   // W2: tile lives behind the ⋯ menu
         var rawBtn = $('tkRaw'); if (rawBtn) rawBtn.classList.toggle('active', rawOpen);  // moved to Settings → Advanced
         if (rawOpen) { $('tkFilters').hidden = true; syncRawFromSet(); }  // serialize set into the editor
         else renderTokenChips();                   // restore correct chip visibility
@@ -3904,6 +4118,9 @@
         label.textContent = r.label;
         var ts = lsGet(LS.lastVerifiedAt);
         pill.title = r.title || (ts ? ('Last verified: ' + new Date(ts).toLocaleString()) : 'Bridge connection status');
+        // W2 · the pill is CSS-hidden; its state feeds the one-voice status line.
+        // The 5s conn poll that lands here doubles as the "verified X ago" refresher.
+        renderIdleStatus(false);
       }
 
       function connOrigin() {
@@ -4248,7 +4465,7 @@
       connStartPoll();
 
       // hide the provenance hovercard when the token table scrolls (U3 · F5)
-      $('tkTableWrap').addEventListener('scroll', hideHovercard);
+      $('listwrap').addEventListener('scroll', hideHovercard);   // W2: the outer listwrap scrolls now
 
       // Re-entry: a returning user with an unreachable bridge (red pill) jumps
       // straight to step 1 (not the intro). (U3 · reconciled to A's 4-state pill.)
@@ -4277,18 +4494,11 @@
         return changed[0] + ', ' + changed[1] + ', ' + changed[2] + ' and ' + (changed.length - 3) + ' others changed since last verify';
       }
       function showDriftBanner(text, currentHash) {
-        var existing = document.getElementById('driftBanner');
-        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-        var bar = document.createElement('div'); bar.id = 'driftBanner'; bar.className = 'drift-banner';
-        var msg = document.createElement('span'); msg.className = 'drift-banner-msg'; msg.textContent = text;
-        var x = document.createElement('button'); x.className = 'drift-banner-dismiss';
-        x.setAttribute('aria-label', 'Dismiss drift warning'); x.textContent = '×';
-        x.onclick = function() {
-          try { sessionStorage.setItem('sorb_drift_dismissed_' + currentHash, '1'); } catch (e) {}
-          if (bar.parentNode) bar.parentNode.removeChild(bar);
-        };
-        bar.appendChild(msg); bar.appendChild(x);
-        $('tabs').insertAdjacentElement('afterend', bar);     // full-width, under tabs, above active view
+        // W2 · one status voice: drift is the WARN state of the status line, not
+        // a banner. Per-hash dismissal is preserved via the same sessionStorage
+        // key (the caller already checks it before invoking).
+        try { sessionStorage.setItem('sorb_drift_dismissed_' + currentHash, '1'); } catch (e) {}
+        setStatusLine('warn', '● Drift: ' + escHtml(text) + ' — Sync to review');
       }
       (function driftCheckOnOpen() {
         if (lsGet(LS.onb) !== 'true') return;                 // never behind the intro's hidden tabs
