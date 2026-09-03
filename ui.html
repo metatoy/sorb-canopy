@@ -11,12 +11,19 @@
         --blaze:#F26722; --blaze-ink:#B14712; --blaze-bg:#FBE7DA;
         --ok:#2E7A4E; --ok-bg:#E4F0E9; --err:#C0341D;
         --warn:#B8860B; --warn-on-dark:#E7C9A9;
+        /* info-blue status role (PV-6, 2026-09-03): pending/changed/FYI. Orange is
+           brand+action ONLY, never a status message. */
+        --info-ink:#2A5AA0; --info-bg:#EEF4FB; --info-line:#B9D1EC;
         --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,monospace;
         --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
         font-family:var(--sans); font-size:12px;
       }
       * { box-sizing: border-box; }
-      body { margin:0; color:var(--ink); background:var(--snow); overflow-x:hidden;
+      /* W2 fixed-window architecture: the body is a pinned flex column — header,
+         tabs, toolbar, verbs never move; only the token list scrolls. */
+      html, body { height:100%; }
+      body { margin:0; color:var(--ink); background:var(--snow); overflow:hidden;
+        height:100vh; display:flex; flex-direction:column;
         -webkit-font-smoothing:antialiased; }
 
       /* ── keyboard focus ring (a11y · GFP RC1 B6) ─────────────────────────
@@ -36,11 +43,23 @@
         border-color: var(--blaze);
       }
 
-      /* ── header (persistent) ─────────────────────────────────────────── */
-      .hdr { display:flex; align-items:center; gap:10px; padding:9px 12px;
-        border-bottom:1px solid var(--line-2); background:var(--surface); }
-      .mark { display:flex; align-items:center; gap:7px; }
-      .glyph { width:16px; height:16px; border-radius:5px; background:var(--blaze); flex:0 0 auto; }
+      /* ── header = the W2 one-voice STATUS LINE (32px, pinned) ────────── */
+      .hdr { display:flex; align-items:center; gap:8px; padding:0 12px; height:32px;
+        flex:none; border-bottom:1px solid var(--line-2); background:var(--surface); }
+      .mark { display:flex; align-items:center; gap:7px; flex:none; }
+      .glyph { width:15px; height:15px; border-radius:4px; background:var(--blaze); flex:0 0 auto; }
+      /* status text — ONE voice; states swap text + color in place */
+      .stxt { font:600 10.5px var(--mono); color:var(--ok); white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis; min-width:0; }
+      .stxt .dim { color:var(--soft); font-weight:500; }
+      .stxt a { color:var(--blaze-ink); text-decoration:none; cursor:pointer; }
+      .stxt a:hover { text-decoration:underline; }
+      .hdr.busy .stxt, .hdr.neutral .stxt { color:var(--soft); }
+      .hdr.warn .stxt { color:var(--warn); }
+      .hdr.err .stxt { color:var(--err); }
+      /* the old pill + teammate voice fold into the status line (one voice) */
+      .conn-pill { display:none !important; }
+      .teammate-indicator { display:none !important; }
       .wm { font-weight:650; font-size:13px; letter-spacing:-.01em; }
       .hdr .sp { flex:1; }
       .qm { position:relative; width:20px; height:20px; border-radius:50%; border:1px solid var(--line);
@@ -62,7 +81,7 @@
 
       /* ── tabs ────────────────────────────────────────────────────────── */
       .tabs { display:flex; gap:2px; padding:0 8px; border-bottom:1px solid var(--line);
-        background:var(--surface); }
+        background:var(--surface); flex:none; }
       .tabs[hidden] { display:none; }
       .tab { padding:9px 12px; font-size:12.5px; color:var(--soft); font-weight:550;
         border:0; border-radius:0; background:transparent; border-bottom:2px solid transparent;
@@ -71,8 +90,8 @@
       .tab.active { color:var(--ink); border-bottom-color:var(--blaze); font-weight:650; }
 
       /* ── intro (first-open front door) ───────────────────────────────── */
-      .intro { display:none; flex-direction:column; padding:20px 20px 16px; min-height:520px; }
-      .intro.show { display:flex; }
+      .intro { display:none; flex-direction:column; padding:20px 20px 16px; }
+      .intro.show { display:flex; flex:1 1 auto; min-height:0; overflow-y:auto; }
       .h1 { font-size:19px; line-height:1.25; letter-spacing:-.01em; font-weight:600;
         margin:2px 0 0; text-wrap:balance; }
       .disc { font-size:9px; color:var(--taupe); margin:8px 0 0; line-height:1.4; }
@@ -139,8 +158,8 @@
       .signin-actions button { flex:1; }
 
       /* ── Part 8 · redeem / invite flow screens (full-height front doors) ── */
-      .flow { display:none; flex-direction:column; padding:18px 20px 16px; min-height:520px; }
-      .flow.show { display:flex; }
+      .flow { display:none; flex-direction:column; padding:18px 20px 16px; }
+      .flow.show { display:flex; flex:1 1 auto; min-height:0; overflow-y:auto; }
       .flow-back { background:none; border:0; padding:0; color:var(--soft); font-size:11px;
         font-weight:550; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
         margin-bottom:12px; width:auto; flex:0 0 auto; }
@@ -188,9 +207,35 @@
       .adv-env-opt { display:flex; align-items:center; gap:5px; cursor:pointer; }
       .adv-env-hint { font-size:11px; color:var(--fg-2); padding:0 0 6px; }
 
-      /* ── primary CTA + secondary actions (tokens foot) ───────────────── */
+      /* ── W2 toolbar: search · Save to project · ⋯ ─────────────────────── */
+      .toolrow { display:flex; align-items:center; gap:7px; padding:0 13px; height:40px;
+        flex:none; position:relative; }
+      .tksearch { flex:1; display:flex; align-items:center; gap:6px; border:1px solid var(--line-2);
+        border-radius:8px; padding:0 9px; height:28px; background:var(--surface); color:var(--soft);
+        font:500 11px var(--sans); min-width:0; cursor:text; }
+      .tksearch:focus-within { border-color:var(--blaze); box-shadow:0 0 0 3px var(--blaze-bg); }
+      .tksearch .ic-xs { width:12px; height:12px; flex:none; }
+      .tksearch input { border:0; outline:0; background:none; font:inherit; color:var(--ink);
+        flex:1; min-width:0; padding:0; }
+      .tksearch input:focus-visible { outline:none; border:0; }
+      .moremenu { position:absolute; top:38px; right:13px; z-index:60; min-width:210px;
+        background:var(--surface); border:1px solid var(--line); border-radius:9px;
+        box-shadow:0 6px 20px rgba(0,0,0,.14); padding:5px; display:grid; gap:1px; }
+      .moremenu[hidden] { display:none; }
+      .mm-item { display:flex; align-items:center; text-align:left; width:100%; border:0;
+        background:none; border-radius:6px; padding:7px 9px; font:500 11.5px var(--sans);
+        color:var(--ink-2); cursor:pointer; }
+      .mm-item:hover { background:var(--surface-2); color:var(--ink); }
+      .mm-note { padding:6px 9px 4px; font:500 10px var(--sans); color:var(--soft);
+        border-top:1px solid var(--line-2); margin-top:3px; }
+      .mm-note[hidden] { display:none; }
+
+      /* ── W2 scrolling list region (the product) ───────────────────────── */
+      .listwrap { flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 13px 12px; }
+
+      /* ── primary CTA + secondary actions (tokens verbs bar — pinned) ──── */
       .foot { border-top:1px solid var(--line); padding:11px 13px 12px; background:var(--surface);
-        margin:12px -14px -14px; }
+        flex:none; }
       .cta { width:100%; background:var(--blaze); color:#fff; border:none; border-radius:8px;
         padding:10px; font-size:13px; font-weight:650; display:flex; align-items:center;
         justify-content:center; gap:8px; }
@@ -199,13 +244,41 @@
         font-size:11px; font-family:var(--mono); }
       .sec-actions { display:flex; gap:6px; margin-top:8px; }
       .ghost { flex:1; border:1px solid var(--line); background:var(--surface); border-radius:7px;
-        padding:6px 4px; font-size:10.5px; color:var(--ink-2); text-align:center; font-weight:550; }
+        padding:6px 4px; font-size:10.5px; color:var(--ink-2); text-align:center; font-weight:550;
+        display:inline-flex; align-items:center; justify-content:center; gap:5px; }
       .ghost:hover:not([disabled]) { border-color:var(--taupe); }
       .ghost[disabled] { color:var(--taupe); opacity:.7; cursor:default; }
+      .ghost.off[disabled] { opacity:.45; }   /* handoff: gated PR reads as clearly inert */
+      .ghost .gh-mark { width:12px; height:12px; flex:none; }
+      /* diff strip — "N changed since your last preview", above the CTA (frame B) */
+      /* W2/W3: changes live IN the list — pinned CHANGED group + filter bar */
+      .tk-tier-head.chg td { background:var(--info-bg); color:var(--info-ink); cursor:pointer; }
+      .tk-tier-head.chg .tk-tier-badge { background:#dbe8f7; color:var(--info-ink); }
+      .tk-was { font:500 9.5px var(--mono); color:var(--soft); white-space:nowrap; flex:none; }
+      .chgfilterbar { display:flex; align-items:center; gap:8px; padding:6px 10px;
+        background:var(--info-bg); border:1px solid var(--info-line); border-radius:8px;
+        margin:10px 0 0; font:600 10.5px var(--sans); color:var(--info-ink); }
+      .chgfilterbar .clear { display:inline-flex; align-items:center; gap:4px; background:none;
+        border:0; color:inherit; font:inherit; padding:0; cursor:pointer; }
+      .chgfilterbar .clear:hover { text-decoration:underline; }
+      .chgfilterbar[hidden] { display:none; }
+      .cta .n { cursor:pointer; }
+      .cta .n.on { background:rgba(255,255,255,.4); }
+      /* why-row — the reason a control is inert (never disable without saying why) */
+      .whyrow { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px;
+        font-size:11px; font-weight:500; color:var(--soft); text-align:center; line-height:1.4; }
+      .whyrow[hidden] { display:none; }   /* explicit display beats the UA [hidden] rule */
+      .whyrow .lock { width:11px; height:11px; flex:none; }
+      .whyrow a { color:var(--blaze-ink); text-decoration:none; cursor:pointer; font-weight:600; }
+      .whyrow a:hover { text-decoration:underline; }
 
       /* ── views ─────────────────────────────────────────────────────── */
-      .view { display: none; padding: 14px; }
-      .view.active { display: block; }
+      /* W2: the tokens view is a pinned flex column (toolbar · scrolling list ·
+         verbs bar); storybook/settings keep a simple scrolling document. */
+      .view { display: none; }
+      .view.active { flex:1 1 auto; min-height:0; }
+      #view-tokens.active { display:flex; flex-direction:column; overflow:hidden; }
+      #view-storybook.active, #view-settings.active { display:block; overflow-y:auto; padding:14px; }
 
       /* ── settings note ────────────────────────────────────────────── */
       .settings-note { font-size: 11px; color: var(--soft); margin: 0 0 12px; line-height: 1.5; }
@@ -329,12 +402,17 @@
         background: var(--surface); color: var(--ink-2); cursor: pointer; user-select: none; flex: 0 0 auto;
       }
       .tk-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
-      .tk-table-wrap { max-height: 340px; overflow-y: auto; border: 1px solid var(--line-2); border-radius: 6px; margin-top: 8px; }
+      /* W2: the outer .listwrap owns scrolling — no inner clamp */
+      .tk-table-wrap { border: 1px solid var(--line-2); border-radius: 6px; margin-top: 8px; }
       .tk-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+      /* W2: no column-header row — the group headers carry the structure (ref anatomy) */
+      .tk-table thead { display: none; }
       .tk-table th {
         position: sticky; top: 0; background: var(--surface-2); text-align: left; font-weight: 600;
         padding: 6px 8px; border-bottom: 1px solid var(--line); color: var(--soft); z-index: 1;
       }
+      /* removed-token row in the CHANGED group */
+      .tk-removed { font-style: italic; color: var(--soft); font-size: 10.5px; }
       .tk-table td { padding: 4px 8px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
       .tk-table tbody tr:hover { background: var(--surface-2); }
       .tk-col-icon { width: 30px; }
@@ -352,6 +430,9 @@
         width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 11px;
         padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px;
       }
+      /* changed-since-last-preview — info-blue status (NOT brand orange). Declared
+         before .invalid so an invalid edit's red border always wins. */
+      .tk-val.chg { color: var(--info-ink); background: var(--info-bg); border-color: var(--info-line); }
       .tk-val.invalid { border-color: var(--err); }
       .tk-name {
         font-family: ui-monospace, Menlo, monospace; font-size: 11px;
@@ -362,6 +443,14 @@
         background: transparent; color: var(--taupe); font-size: 13px; line-height: 1; cursor: pointer; flex: 0 0 auto;
       }
       .tk-del:hover { color: var(--err); }
+      /* W2 row diet — rare per-row actions (◈ usages · ✕ remove) reveal on
+         hover or keyboard focus; 114 always-visible delete buttons was noise. */
+      .tk-table tbody tr .tk-del, .tk-table tbody tr .tk-uses { visibility: hidden; }
+      .tk-table tbody tr:hover .tk-del, .tk-table tbody tr:focus-within .tk-del,
+      .tk-table tbody tr:hover .tk-uses, .tk-table tbody tr:focus-within .tk-uses { visibility: visible; }
+      /* value cell with a "was <old>" hint (changed rows) */
+      .tk-val-cell { display: flex; align-items: center; gap: 6px; }
+      .tk-val-cell .tk-val { flex: 1; min-width: 0; }
       .tk-empty { padding: 20px; text-align: center; color: var(--soft); font-size: 11px; line-height: 1.6; }
       .tk-rawwrap { margin-top: 8px; }
       .tk-rawwrap[hidden] { display: none; }
@@ -454,7 +543,7 @@
 
       /* ── tier group headers + dimension swatch (U3 · F15/F14) ─────────── */
       .tk-tier-head td {
-        position: sticky; top: 28px;
+        position: sticky; top: 0;  /* W2: no thead above — headers stick to the listwrap top */
         background: var(--line-2); font-size: 10px; font-weight: 700;
         text-transform: uppercase; letter-spacing: .06em; color: var(--soft);
         padding: 3px 8px; pointer-events: none;
@@ -664,6 +753,36 @@
       }
       .empty-state .es-cta:hover { background: var(--blaze-ink); }
 
+      /* ── Components 404 → guided two-step (frame C) ──────────────────── */
+      .es-steps { display:grid; gap:8px; text-align:left; margin:2px auto 0; max-width:320px; }
+      .es-step { display:flex; align-items:center; gap:9px; font-size:11.5px; color:var(--ink-2);
+        line-height:1.4; }
+      .es-num { width:19px; height:19px; border-radius:50%; background:var(--surface-2);
+        border:1px solid var(--line); color:var(--soft); display:inline-flex; align-items:center;
+        justify-content:center; font-size:10px; font-weight:800; flex:none; }
+      .es-cmd { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono);
+        font-size:10.5px; background:var(--ink); color:#fff; border-radius:7px; padding:6px 10px;
+        cursor:pointer; border:none; }
+      .es-cmd:hover { background:#000; }
+      .es-cmd .cp { opacity:.7; }
+      .es-cmd.copied { background:var(--ok); }
+      .es-refresh { flex:0 0 auto; width:auto; min-width:0; padding:5px 12px; font-size:11px;
+        border:1px solid var(--line); background:var(--surface); color:var(--ink-2); border-radius:6px;
+        display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+      .es-refresh:hover { border-color:var(--taupe); }
+      /* warn banner (not danger) — "expected before first capture" */
+      .warn-banner { margin:12px 0 4px; background:#FBF0E2; border:1px solid #F0DCC0;
+        color:var(--warn); border-radius:8px; padding:8px 10px; font-size:11px; line-height:1.5; }
+      .warn-banner b { color:var(--warn); }
+      /* Settings one-release "moved" note (frame D) */
+      .moved-note { margin-top:8px; background:var(--blaze-bg); color:var(--blaze-ink);
+        border-radius:8px; padding:8px 10px; font-size:11px; line-height:1.5; }
+      .moved-note b { color:var(--blaze-ink); }
+      /* Settings connected mini-pill on the Advanced summary */
+      .synced-pill { display:inline-flex; align-items:center; gap:4px; font-size:9.5px; font-weight:600;
+        color:var(--ok); background:var(--ok-bg); border-radius:999px; padding:2px 8px; margin-left:6px; }
+      .synced-pill[hidden] { display:none; }   /* explicit display beats the UA [hidden] rule */
+
       /* ── U3 · Settings inline Test ───────────────────────────────────── */
       .set-field-row { display: flex; gap: 6px; align-items: stretch; }
       .set-field-row input { flex: 1; }
@@ -684,8 +803,10 @@
          in-content wordmark is dropped. The connection/verify status pill leads
          as the primary element; the small orange mark is a quiet left anchor and
          the ? help sits at the right. Applies across every view. -->
-    <div class="hdr">
+    <div class="hdr" id="hdr">
       <div class="mark"><div class="glyph"></div></div>
+      <!-- W2 · the ONE status voice — ambient state + action receipts swap in place -->
+      <span class="stxt" id="statusText" role="status" aria-live="polite" aria-atomic="true"></span>
       <div class="conn-pill" id="connPill" data-state="disconnected" title="Bridge connection status">
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">—</span>
@@ -864,29 +985,46 @@
       <button class="tab" id="tb-nav-settings">Settings</button>
     </div>
 
-    <!-- ── TOKENS VIEW ─────────────────────────────────────────────────── -->
+    <!-- ── TOKENS VIEW (W2: toolbar · scrolling list · pinned verbs) ────── -->
     <div id="view-tokens" class="view active">
-      <div class="tk-head">
-        <label>Tokens <span class="hint">(from Figma Variables — editable)</span></label>
-        <span class="hint" id="darkModeBadge" hidden style="font-weight:600;" title="Both Light and Dark values push together; live app preview toggles.">🌗&nbsp;Light + Dark detected — previews will toggle</span>
-        <div class="tk-head-right">
-          <span class="hint" style="font-weight:400;cursor:pointer;">
-            <input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
-          </span>
-          <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables" aria-label="Reload tokens from Figma Variables">
-            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
-          </button>
-          <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor" aria-label="Toggle raw JSON editor">
-            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
-          </button>
-          <button class="tk-raw-btn" id="publishTokens" title="Snapshot the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Snapshot tokens to project" style="width:auto;padding:0 8px;font-weight:600;">Snapshot&nbsp;→</button>
+      <!-- W2 toolbar: search (replaces the Filter chips) · Save to project · ⋯ -->
+      <div class="toolrow">
+        <label class="tksearch"><svg class="ic-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="tkSearch" placeholder="Search tokens…" aria-label="Search tokens by name or value" /></label>
+        <button class="tk-raw-btn" id="publishTokens" title="Save the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Save tokens to project" style="width:auto;padding:0 8px;font-weight:600;white-space:nowrap;">Save to project&nbsp;→</button>
+        <button class="tk-raw-btn" id="moreBtn" title="More" aria-label="More actions" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
+        <!-- ⋯ overflow menu — rare controls leave the toolbar (W2) -->
+        <div class="moremenu" id="moreMenu" hidden>
+          <label class="mm-item"><input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 6px 0 0;" />Auto-sync from Figma<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span></label>
+          <button class="mm-item" id="mmSyncNow" type="button">Sync from Figma now</button>
+          <button class="mm-item" id="mmApplyTheme" type="button">Apply a theme&nbsp;›</button>
+          <button class="mm-item" id="mmViewCode" type="button">View code&nbsp;<span class="mono" style="font-size:10px;">&lt;/&gt;</span></button>
+          <button class="mm-item" id="mmSyncVars" type="button">Sync Variables into Figma</button>
+          <div class="mm-note" id="darkModeBadge" hidden title="Both Light and Dark values push together; live app preview toggles.">Light + Dark detected — previews will toggle</div>
         </div>
       </div>
 
+      <!-- W2: the scrolling region — the list IS the product -->
+      <div class="listwrap" id="listwrap">
+      <!-- W3: changed-only filter (toggled by the CTA count chip / CHANGED header) -->
+      <div class="chgfilterbar" id="chgFilterBar" hidden>
+        <svg class="ic-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:12px;height:12px;"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+        Showing changed only<span style="flex:1"></span>
+        <button class="clear" id="chgFilterClear" type="button">Clear <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px;"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
       <div class="tk-filters" id="tkFilters" hidden></div>
 
       <div class="tk-table-wrap" id="tkTableWrap">
         <table class="tk-table">
+          <!-- W2: the thead is display:none (group headers carry the structure);
+               the colgroup keeps table-layout:fixed column widths without it. -->
+          <colgroup>
+            <col style="width:30px" />
+            <col />
+            <col style="width:200px" />
+            <col style="width:30px" />
+          </colgroup>
           <thead>
             <tr>
               <th class="tk-col-icon"></th>
@@ -900,9 +1038,9 @@
       </div>
 
       <!-- ── graft picker (U3 · P4) — copy a source component's theme onto a target ── -->
-      <div class="graft" id="graftPanel">
+      <div class="graft" id="graftPanel" hidden>
         <button class="graft-toggle" id="graftToggle" type="button">
-          <span id="graftToggleLabel">Graft a theme ▸</span>
+          <span id="graftToggleLabel">Apply a theme ▸</span>
         </button>
         <div class="graft-body" id="graftBody" hidden>
           <div class="graft-row">
@@ -931,23 +1069,26 @@
           <button id="syncvars">Sync Variables</button>
         </div>
       </div>
+      </div><!-- /listwrap -->
 
-      <!-- C4 · receipt band — bordered result line with a state dot (red=error,
-           green=success, neutral otherwise). Collapses to nothing when empty.
-           Keeps the B6 role="status" + aria-live so announcements don't regress. -->
-      <div class="receipt" id="status" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
+      <!-- legacy receipt band — W2 folds all status into the header line; kept in
+           the DOM (hidden) so setStatus/aria plumbing has a stable anchor. -->
+      <div class="receipt" id="status" data-state="empty" hidden></div>
 
+      <!-- W2 verbs bar — pinned; verbs only (the spine). No diff strip: changes
+           live IN the list (pinned CHANGED group). -->
       <div class="foot">
         <button class="cta" id="cta">
           <span id="ctaLabel">Load from App</span><span class="n" id="ctaCount" hidden></span>
         </button>
-        <!-- C3 · the redundant "Load from App" ghost is dropped — the giant foot
-             CTA above is the single load path. Sync Variables + Open PR remain. -->
+        <!-- shown only when the CTA is disabled (previewed, nothing changed). -->
+        <div class="whyrow" id="ctaWhy" hidden>Everything here is saved to your project.</div>
         <div class="sec-actions">
-          <button class="ghost" id="ghPreview">Preview</button>
-          <button class="ghost" id="ghSync">Sync Variables</button>
+          <button class="ghost" id="ghSave">Save to project&nbsp;→</button>
           <button class="ghost off" id="ghPr" disabled>Open PR</button>
         </div>
+        <!-- the reason Open PR is inert (never disable without saying why). -->
+        <div class="whyrow" id="prWhy" hidden></div>
       </div>
     </div>
 
@@ -964,6 +1105,9 @@
       </div>
 
       <div class="sb-filters" id="sbFilters" hidden></div>
+
+      <!-- §7 · the 404 dead-end becomes a guided two-step (built by render404Guide). -->
+      <div id="sbGuide" hidden></div>
 
       <div class="sb-table-wrap" id="sbTableWrap">
         <table class="sb-table" id="sbTable">
@@ -1003,12 +1147,15 @@
         <p class="settings-note" style="margin:6px 0 0;">Manage your org, keys &amp; billing in the dashboard. Log out clears this plugin&rsquo;s saved connection.</p>
       </div>
 
-      <p class="settings-note">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
+      <!-- copy swaps to "Connected via your invite — nothing to fill in." once a
+           connection is saved (set in refreshSettingsConnState). -->
+      <p class="settings-note" id="settingsConnNote">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
 
       <!-- Part 8 · the technical fields collapse into an "Advanced" disclosure (closed by
-           default). Input ids are unchanged, so all persistence / activeKey() wiring holds. -->
+           default). Input ids are unchanged, so all persistence / activeKey() wiring holds.
+           The "✓ synced from your invite" pill appears when a connection exists. -->
       <details class="adv" id="advSettings">
-        <summary class="adv-sum">Advanced setup <span class="adv-hint">— enter the bridge, app, and key by hand</span></summary>
+        <summary class="adv-sum">Advanced setup <span class="adv-hint" id="advHint">— bridge, app &amp; key</span><span class="synced-pill" id="advSyncedPill" hidden>&#10003; synced from your invite</span></summary>
         <div class="adv-body">
           <label for="origin">Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
           <div class="set-field-row">
@@ -1032,6 +1179,7 @@
 
           <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
           <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
+
         </div>
       </details>
 
@@ -1041,11 +1189,9 @@
         <span class="hint">(wrap each insert in a named frame)</span>
       </label>
 
-      <div class="settings-reset" id="figmaRefSection" style="margin-top:14px;">
-        <button class="secondary" id="figmaExportBtn" type="button">Export variables to bridge</button>
-        <p class="settings-note" style="margin:8px 0 0;">Sends this file&rsquo;s Figma Variables to the bridge, then checks them against your DTCG tokens (flags drift — never overwrites either side).</p>
-        <div class="receipt" id="figmaExportStatus" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
-      </div>
+      <!-- §6 · "Export variables to bridge" moved into Sync on the Tokens tab.
+           One-release note so anyone who relied on the button knows where it went. -->
+      <div class="moved-note" id="movedNote" style="margin-top:14px;"><b>Moved:</b> &ldquo;Export variables to bridge&rdquo; now runs as part of Sync on the Tokens tab — the drift check happens on every sync, not from a settings button.</div>
 
       <div class="settings-reset">
         <button class="reset-btn" id="resetBtn" type="button">Reset settings</button>
@@ -1071,7 +1217,13 @@
         var vids = Object.values(VIEWS);
         for (var i = 0; i < vids.length; i++) {
           var v = $(vids[i]);
-          if (v) v.style.display = vids[i] === VIEWS[key] ? 'block' : 'none';
+          // W2: the class CSS owns each view's display (tokens = flex column);
+          // inline display only ever hides — '' lets .view.active win.
+          if (v) {
+            var on = vids[i] === VIEWS[key];
+            v.style.display = on ? '' : 'none';
+            v.classList.toggle('active', on);
+          }
         }
         var nids = Object.values(NAV);
         for (var j = 0; j < nids.length; j++) {
@@ -1080,6 +1232,8 @@
         }
         // auto-load stories when switching to storybook tab
         if (key === 'storybook') loadStories();
+        // keep Settings' connected-state copy fresh whenever it's shown
+        if (key === 'settings' && typeof refreshSettingsConnState === 'function') refreshSettingsConnState();
       }
 
       $('tb-nav-tokens').onclick   = function() { showView('tokens'); };
@@ -1091,31 +1245,65 @@
       // for a success receipt (preview pushed/created, synced, loaded, ✓), neutral
       // otherwise; empty message collapses the band entirely.
       function statusIsSuccess(html) {
-        return /✓|\bcreated\b|\bpushed\b|\bsynced\b|\bupdated\b|\bloaded\b|\bready\b/i.test(String(html));
+        return /✓|\bcreated\b|\bpushed\b|\bsynced\b|\bupdated\b|\bloaded\b|\bready\b|\bsaved\b/i.test(String(html));
       }
+      // ── W2 · the ONE status voice ──────────────────────────────────────
+      // setStatusLine writes the 32px header line; states swap text + color IN
+      // PLACE (ok green · busy/neutral muted · warn amber · err red). Inline
+      // anchors stay live (innerHTML) — Retry / Refresh links bind by id after.
+      // No-op while the front door owns the header (tabs hidden).
+      var _stTransient = { kind: '', at: 0 };
+      var ST_HOLD_MS = 8000, ST_HOLD_ERR_MS = 30000;
+      function setStatusLine(kind, html) {
+        var hdr = $('hdr'), el = $('statusText');
+        if (!hdr || !el) return;
+        if ($('tabs') && $('tabs').hidden) return;  // intro/sign-in screens own the header
+        hdr.className = 'hdr' + (kind && kind !== 'ok' ? ' ' + kind : '');
+        el.innerHTML = html || '';
+        _stTransient = { kind: kind, at: new Date().getTime() };
+      }
+      // setStatus keeps its NAME + SIGNATURE (58 call sites + the onboarding
+      // step-4 monkey-patch depend on it) but now routes into the status line.
+      // The legacy #status receipt band stays hidden in the DOM.
       function setStatus(html, isErr) {
-        var el = $('status');
         var empty = !html || String(html).trim() === '';
-        var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
-        el.setAttribute('data-state', state);
-        // Wrap in one flex child — the .receipt container is display:flex (for
-        // the status dot), so bare inline nodes would each become flex items.
-        el.innerHTML = empty ? '' : '<span class="receipt-msg">' + html + '</span>';
+        if (empty) { _stTransient = { kind: '', at: 0 }; renderIdleStatus(true); return; }
+        var kind = isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral');
+        setStatusLine(kind, html);
+      }
+      // Idle composer — the ambient line, refreshed by the existing 5s conn poll
+      // (setConnState calls this). Held off while a transient receipt is fresh.
+      function renderIdleStatus(force) {
+        var now = new Date().getTime();
+        var hold = _stTransient.kind === 'err' ? ST_HOLD_ERR_MS : ST_HOLD_MS;
+        if (!force && _stTransient.at && (now - _stTransient.at) < hold) return;
+        _stTransient = { kind: '', at: 0 };
+        var n = Object.keys(tokenSet || {}).length;
+        if (lsGet(LS.demo) === 'true') {
+          setStatusLine('ok', '● Demo — read-only <span class="dim">· ' + n + ' tokens</span>');
+          _stTransient = { kind: '', at: 0 };
+          return;
+        }
+        var st = ($('connPill') && $('connPill').getAttribute('data-state')) || 'disconnected';
+        if (st === 'green-live' || st === 'green-stale') {
+          var ts = lsGet(LS.lastVerifiedAt);
+          setStatusLine('ok', '● In sync with Figma <span class="dim">· ' + n + ' tokens' +
+            (ts ? ' · verified ' + fmtElapsed(ts) : '') + '</span>');
+        } else if (st === 'amber') {
+          setStatusLine('busy', '○ Connecting…');
+        } else if (st === 'red') {
+          setStatusLine('err', '● Can’t reach the bridge — nothing was pushed · <a id="stRetry">Retry</a>');
+          var r = document.getElementById('stRetry');
+          if (r) r.onclick = function() { connCheck(); $('committed').click(); };
+        } else {
+          setStatusLine('neutral', '');
+        }
+        _stTransient = { kind: '', at: 0 };         // idle renders never hold
       }
       function setSbStatus(html, isErr) {
         var el = $('status-sb');
         el.className = 'status' + (isErr ? ' err' : '');
         el.innerHTML = html;
-      }
-      // Same receipt-band pattern as setStatus(), scoped to the Settings
-      // "Export variables to bridge" section.
-      function setFigmaExportStatus(html, isErr) {
-        var el = $('figmaExportStatus');
-        if (!el) return;
-        var empty = !html || String(html).trim() === '';
-        var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
-        el.setAttribute('data-state', state);
-        el.innerHTML = empty ? '' : '<span class="receipt-msg">' + html + '</span>';
       }
 
       // ── persisted settings ─────────────────────────────────────────────
@@ -1128,6 +1316,12 @@
       LS.lastComponentCount = 'sorb.lastComponentCount';
       LS.lastTokenIds       = 'sorb.lastTokenIds';
       LS.lastTokenSnapshot  = 'sorb.lastTokenSnapshot';
+      // (retired 2026-09-03: sorb.lastPreviewedMap — the changes baseline is now
+      // committedTokens, i.e. what's SAVED TO THE PROJECT. Previews are pure looks
+      // with zero state side-effects; only Save to project moves the baseline.)
+      // The hosted bridge's /tokens/latest store is empty (saves go to the cloud),
+      // so the baseline also persists plugin-side at each successful Save:
+      LS.savedBaseline      = 'sorb.savedBaseline';
       // Part 8 · handshake — set once a developer invite has been pasted (Advanced-only
       // now; the front-door primary is account sign-in, not this flag).
       LS.hasHandshake       = 'sorb.hasHandshake';
@@ -1197,12 +1391,13 @@
         $('githubUrl').value    = lsGet(LS.gh)     || DEFAULT_GH;
         $('storybookUrl').value = lsGet(LS.sb)     || DEFAULT_SB;
         $('apiKey').value       = lsGet(LS.apiKey);
+        refreshSettingsConnState();
       }
       syncSettingsInputs();
 
       $('origin').addEventListener('change',       function(e) { lsSet(LS.origin, e.target.value); });
       $('appUrl').addEventListener('change',       function(e) { lsSet(LS.app,    e.target.value); });
-      $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); });
+      $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); updateCta(); });   // Open PR gate depends on the saved GitHub url
       $('storybookUrl').addEventListener('change', function(e) { lsSet(LS.sb,     e.target.value); });
       $('apiKey').addEventListener('change',       function(e) { lsSet(LS.apiKey, e.target.value.trim()); });
 
@@ -1240,17 +1435,25 @@
       // UI POSTs it to the bridge and immediately checks it against the
       // committed DTCG tokens. Diffs only FLAG drift — neither side is ever
       // auto-resolved from this flow.
-      $('figmaExportBtn').onclick = function() {
-        $('figmaExportBtn').disabled = true;
-        setFigmaExportStatus('Collecting Figma Variables…');
-        post('sorb-export-variables');
-      };
+      // §6 · One sync story. "Export variables to bridge" is no longer a Settings
+      // button — the same round-trip (export this file's Variables → bridge, then
+      // check them against the committed DTCG tokens; flags only, never resolves)
+      // now piggybacks on Sync: fired on a manual Reload, and (throttled) on
+      // auto-sync. Result surfaces in the Tokens status band, not a separate one.
+      var lastDriftCheckAt = 0, DRIFT_THROTTLE_MS = 5 * 60 * 1000;
+      function maybeDriftCheck(force) {
+        if (lsGet(LS.demo) === 'true') return;    // read-only pk → /tokens/figma would 403
+        if (!trimOrigin()) return;                // no bridge yet
+        var now = new Date().getTime();
+        if (!force && (now - lastDriftCheckAt) < DRIFT_THROTTLE_MS) return;
+        lastDriftCheckAt = now;
+        post('sorb-export-variables');            // → code.js collects → sorb-export-result → postFigmaExport
+      }
 
       function postFigmaExport(artifact) {
         var o = trimOrigin();
         var n = (artifact && artifact.tokens && artifact.tokens.length) || 0;
-        if (!o) { setFigmaExportStatus('Set a bridge origin first (Advanced setup).', true); return; }
-        setFigmaExportStatus(n + ' variable(s) collected — sending to bridge…');
+        if (!o) return;                           // background check — stay quiet on a missing origin
         bfetch(o + '/tokens/figma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1260,19 +1463,14 @@
           return bfetch(o + '/verify/figma');
         }).then(function(res) { return res.json(); })
         .then(function(body) {
-          if (body && body.error) {
-            setFigmaExportStatus('Exported ' + n + ' — verify unavailable: ' + escHtml(body.error), true);
-            return;
-          }
+          if (body && body.error) return;         // verify unavailable — leave the loaded receipt as-is
           var driftCount = (body.mismatches ? body.mismatches.length : 0) + (body.missingInFigma ? body.missingInFigma.length : 0);
           if (body.ok) {
-            setFigmaExportStatus('✓ Exported ' + n + ' — matches your DTCG tokens (' + body.matched + '/' + body.checked + ').');
+            setStatus('✓ ' + n + ' tokens from Figma Variables · in sync · drift-checked');
           } else {
-            setFigmaExportStatus('Exported ' + n + ' — ' + driftCount + ' drift flag(s) vs your DTCG tokens (' + body.matched + '/' + body.checked + ' matched).', true);
+            setStatus(n + ' tokens · ' + driftCount + ' drift flag(s) vs your DTCG tokens (' + body.matched + '/' + body.checked + ' matched).', true);
           }
-        }).catch(function(e) {
-          setFigmaExportStatus('Export failed: ' + escHtml(e && e.message), true);
-        });
+        }).catch(function(e) { /* background check — silent on transient failure */ });
       }
 
       // U3 — flat-Settings inline Test (reuses testConnection; §3 honesty labels).
@@ -1289,6 +1487,57 @@
       }
       wireSettingsTest('origin', 'originTest', 'originResult', 'health');
       wireSettingsTest('appUrl', 'appTest',   'appResult',    'ping');
+
+      // §8 · relocated capabilities (previously top-level toolbar buttons).
+      // §C · ⋯ overflow menu — rare controls' new home (replaces the Settings rows,
+      // the toolbar reload icon, the </> toggle, the graft tile trigger).
+      $('moreBtn').onclick = function(e) {
+        e.stopPropagation();
+        var m = $('moreMenu'), open = m.hidden;
+        m.hidden = !open;
+        $('moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+      document.addEventListener('click', function(e) {
+        var m = $('moreMenu');
+        if (m && !m.hidden && !m.contains(e.target) && e.target !== $('moreBtn')) {
+          m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { var m = $('moreMenu'); if (m && !m.hidden) { m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); } }
+      });
+      function closeMoreMenu() { var m = $('moreMenu'); if (m) m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); }
+      $('mmSyncNow').onclick    = function() { closeMoreMenu(); $('reload').click(); };
+      $('mmViewCode').onclick   = function() { closeMoreMenu(); toggleRaw(); };
+      $('mmSyncVars').onclick   = function() { closeMoreMenu(); $('syncvars').click(); };
+      var graftShown = false;   // W2 · the Apply-a-theme tile appears only via the ⋯ menu
+      $('mmApplyTheme').onclick = function() {
+        closeMoreMenu();
+        graftShown = true;
+        var gp = $('graftPanel'); if (gp) gp.hidden = false;
+        $('graftToggle').click();                   // opens the picker body
+        var lw = $('listwrap'); if (lw) lw.scrollTop = lw.scrollHeight;   // bring the panel into view (no scrollIntoView — app rule)
+      };
+      // W2 · toolbar search — filters rows by name or value as you type.
+      $('tkSearch').oninput = function(e) {
+        tokenQuery = e.target.value || '';
+        renderTokenTable();
+      };
+      // deferred CHANGED re-render lands once the edited value field blurs
+      $('listwrap').addEventListener('focusout', function() {
+        setTimeout(flushPendingChgRender, 0);       // let focus settle first
+      });
+
+      // §8 · reflect the connection state in Settings copy: once connected, the
+      // hand-entry paragraph flips to a reassurance and Advanced shows a synced pill.
+      function refreshSettingsConnState() {
+        var connected = isConnectedState();
+        var note = $('settingsConnNote');
+        if (note) note.textContent = connected
+          ? 'Connected via your invite — nothing to fill in.'
+          : 'Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.';
+        var pill = $('advSyncedPill'); if (pill) pill.hidden = !connected;
+      }
 
       // Label toggle (default ON — only false when explicitly saved as 'no').
       $('labelToggle').checked = lsGet(LS.label) !== 'no';
@@ -1383,12 +1632,67 @@
       var dirty = false;            // raw editor has unsaved edits
       var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
 
+      // ── unsaved-changes model (fix 2026-09-03) ──────────────────────────
+      // Drives the CTA count, the CHANGED group, and the .chg row tint.
+      // Baseline = committedTokens (what's SAVED TO THE PROJECT, GET /tokens/latest)
+      // — NOT the last preview: previews are ephemeral looks and must never move
+      // the baseline. CHANGED = committed tokens whose value differs or that were
+      // removed; tokens new-in-Figma aren't listed (nothing shipped to differ from).
+      // No baseline yet (never saved) → count falls back to the total token load.
+      // NOTE (accepted limit): compares tokenSet only — darkTokenSet not counted.
+      var chgList = [], chgSet = {}, hasBaseline = false;
+      var filterChanged = false;    // W3 · changed-only list filter (count chip / CHANGED header)
+      var tokenQuery = '';          // W2 · toolbar search query
+      function refreshChanges() {
+        chgList = []; chgSet = {};
+        if (!committedTokens || !Object.keys(committedTokens).length) { hasBaseline = false; return; }
+        hasBaseline = true;
+        var keys = Object.keys(committedTokens);
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i];
+          if (tokenSet[k] !== committedTokens[k]) { chgList.push(k); chgSet[k] = true; }
+        }
+        chgList.sort();
+      }
+      // Quiet background refresh of the committed baseline (boot · after save).
+      // Hosted mode: the bridge's committed store is EMPTY (saves land in the
+      // cloud), so the durable plugin-side snapshot from the last successful
+      // "Save to project" is the baseline; a non-empty bridge head (self-host
+      // `sorb commit` flow) wins when present.
+      function hydrateSavedBaseline() {
+        var raw = lsGet(LS.savedBaseline);
+        if (!raw) return false;
+        try { committedTokens = JSON.parse(raw); return true; } catch (e) { return false; }
+      }
+      function refreshCommittedBaseline() {
+        if (hydrateSavedBaseline()) { renderTokenTable(); updateCta(); }
+        var origin = trimOrigin(); if (!origin) return;
+        bfetch(origin + '/tokens/latest')
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(json) {
+            if (!json || !Object.keys(json).length) return;   // empty bridge store → keep the saved baseline
+            committedTokens = JSON.parse(JSON.stringify(json));
+            renderTokenTable(); updateCta();
+          })
+          .catch(function(e) { /* quiet — the saved-baseline fallback covers it */ });
+      }
+      // W3 · toggle the changed-only view; the count chip and CHANGED header both call this.
+      function toggleChangedFilter() {
+        filterChanged = !filterChanged;
+        renderTokenTable();
+        updateCta();                              // count chip gets/loses its .on fill
+      }
+
       function applyTokens(tokens, darkTokens, hasDark, isAuto) {
         darkTokenSet = (darkTokens && Object.keys(darkTokens).length) ? darkTokens : null;
         hasDarkMode = !!hasDark;
         renderDarkModeBadge();
         setTokenSet(tokens, { silent: true });
-        setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables' + (isAuto ? ' (auto).' : '.'));
+        // W2 one voice: auto pulls stay silent (the idle line already carries the
+        // count); a manual load gets a brief receipt.
+        if (isAuto) renderIdleStatus(false);
+        else setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables.');
+        if (isAuto) maybeDriftCheck(false);       // §6 · throttled drift check on the sync path (never per 1.5s poll)
       }
 
       // ── dark-mode indicator (dark-mode-phase3 P3.2, minimal) — a one-line
@@ -1420,9 +1724,7 @@
         } else if (msg.type === 'sorb-verify') {
           verifyInsert(msg.storyId, msg.bbox, msg.meta);
         } else if (msg.type === 'sorb-export-result') {
-          if ($('figmaExportBtn')) $('figmaExportBtn').disabled = false;
-          if (!msg.ok) { setFigmaExportStatus('Export failed: ' + escHtml(msg.error), true); }
-          else postFigmaExport(msg.artifact);
+          if (msg.ok) postFigmaExport(msg.artifact);   // §6 · background drift check; silent on failure
         } else if (msg.type === 'sorb-restore') {
           hydrateFromRestore(msg.data);   // durable settings from clientStorage
           syncSettingsInputs();
@@ -1470,45 +1772,113 @@
       // live-session state; the hidden proxy buttons (#committed/#preview/#openpr/
       // #syncvars/#reload) stay the handler home, so the §2 contracts are
       // unchanged — the new chrome only clicks them.
+      // ONE Preview verb: the CTA never advances to a terminal "Open PR" state — it
+      // loads, then stays Preview. Open PR is a separate, always-visible secondary.
       function ctaState() {
         if (!Object.keys(tokenSet).length) return 'load';
-        if (!livePreviewId) return 'preview';
-        return 'openpr';                          // #openpr surfaced as the CTA terminal state
+        return 'preview';
+      }
+      // Open-PR gate — the TRUE causes (read the SAVED github url, not the DEFAULT_GH
+      // prefilled input): 'github' (no tokens file connected) | 'session' (nothing
+      // previewed yet) | null (unlocked). GitHub gate wins — it can't self-resolve.
+      function openPrGate() {
+        if (!lsGet(LS.gh).trim()) return 'github';
+        if (!livePreviewId) return 'session';
+        return null;
       }
       function updateCta() {
         var cta = $('cta');
         if (!cta) return;                         // defensive (teardown / unload)
         var label = $('ctaLabel'), count = $('ctaCount');
+        refreshChanges();
         // Demo mode uses a read-only pk (writes 403) — no editing; the CTA opens the
-        // pre-seeded hosted preview, and the write-oriented ghosts are disabled.
+        // pre-seeded hosted preview, and the write-oriented secondaries are disabled.
         if (lsGet(LS.demo) === 'true') {
           label.textContent = 'Open the live demo'; count.hidden = true;
-          cta.setAttribute('data-act', 'demo');
-          $('ghSync').disabled = true;
+          cta.disabled = false; cta.setAttribute('data-act', 'demo');
+          $('ctaWhy').hidden = true;
+          $('ghSave').disabled = true;
           $('ghPr').disabled = true; $('ghPr').classList.add('off');
-          $('ghPreview').disabled = true;   // demo CTA itself opens the seeded preview
+          setPrWhy('Demo mode is read-only — PRs are disabled.');
+          filterChanged = false;
+          var dfb = $('chgFilterBar'); if (dfb) dfb.hidden = true;
+          renderDiffStrip();
           return;
         }
-        $('ghSync').disabled = false;
         var st = ctaState(), n = Object.keys(tokenSet).length;
+        cta.disabled = false; $('ctaWhy').hidden = true;
         if (st === 'load') {
           label.textContent = 'Load from App'; count.hidden = true;
           cta.setAttribute('data-act', 'committed');
-        } else if (st === 'preview') {
+        } else {                                  // 'preview' — the only other state
           label.textContent = 'Preview in app';
-          count.textContent = n; count.hidden = (n === 0);
           cta.setAttribute('data-act', 'preview');
-        } else {
-          label.textContent = 'Open PR';
-          count.textContent = n; count.hidden = (n === 0);
-          cta.setAttribute('data-act', 'openpr');
+          if (!hasBaseline) {                     // never previewed → count = total load
+            count.textContent = String(n); count.hidden = (n === 0);
+          } else if (chgList.length === 0) {      // previewed, nothing changed → inert + why
+            count.hidden = true;
+            cta.disabled = true; $('ctaWhy').hidden = false;
+          } else {                                // previewed, N changed
+            count.textContent = chgList.length + (chgList.length === 1 ? ' change' : ' changes');
+            count.hidden = false;
+          }
         }
-        $('ghPr').disabled = !livePreviewId;      // Open-PR ghost live only with a session
-        $('ghPr').classList.toggle('off', !livePreviewId);
-        // Preview ghost: always available once tokens are loaded, so the flow is no
-        // longer one-way — you can re-push / re-open the preview even after the CTA
-        // has advanced to its terminal "Open PR" state (livePreviewId set).
-        $('ghPreview').disabled = (n === 0);
+        // W3 · the count chip doubles as the changed-only filter toggle
+        count.classList.toggle('on', filterChanged);
+        count.title = filterChanged ? 'Show all tokens' : 'Show only the unsaved changes';
+        if (filterChanged && (!hasBaseline || chgList.length === 0)) {
+          // filter no longer applicable (baseline reset / all previewed) → drop it
+          filterChanged = false;
+          var fb2 = $('chgFilterBar'); if (fb2) fb2.hidden = true;
+        }
+        // Save to project needs a working set.
+        $('ghSave').disabled = (n === 0);
+        // Open PR — true-cause gating + why-row.
+        var gate = openPrGate();
+        $('ghPr').disabled = !!gate;
+        $('ghPr').classList.toggle('off', !!gate);
+        if (gate === 'github') {
+          setPrWhy('Open PR unlocks when GitHub is connected — <a id="prConnect">Connect →</a>');
+        } else if (gate === 'session') {
+          setPrWhy('Open PR unlocks after a preview — it opens the change you previewed.');
+        } else {
+          setPrWhy('');
+        }
+        renderDiffStrip();
+      }
+      // why-row for Open PR (html allowed — copy is authored, not user data).
+      function setPrWhy(html) {
+        var el = $('prWhy'); if (!el) return;
+        if (!html) { el.hidden = true; el.innerHTML = ''; return; }
+        el.hidden = false;
+        el.innerHTML = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg><span>' + html + '</span>';
+        var c = document.getElementById('prConnect');
+        // TODO: once the connect payload carries a project id, deep-link
+        // <cloudBase>/dashboard/projects/<id>/connectors instead of Settings.
+        if (c) c.onclick = function() { showView('settings'); var a = $('advSettings'); if (a) a.open = true; var g = $('githubUrl'); if (g) g.focus(); };
+      }
+      // W2: changes live IN the list (pinned CHANGED group), not in a strip.
+      // renderDiffStrip is now the RE-RENDER TRIGGER: when the change-set signature
+      // moves, re-render the table so the CHANGED group / tints / was-hints track —
+      // signature-guarded (no churn under the 1.5s auto-poll), and deferred while a
+      // value input has focus (a rebuild mid-keystroke would destroy the field).
+      var _diffSig = null, _pendingChgRender = false;
+      function renderDiffStrip() {
+        var sig = hasBaseline ? chgList.map(function(k){ return k + '' + tokenSet[k]; }).join('') : '';
+        if (sig === _diffSig) return;
+        var ae = document.activeElement;
+        if (ae && ae.classList && ae.classList.contains('tk-val')) {
+          _pendingChgRender = true;                 // re-render on blur (see buildRow)
+          return;
+        }
+        _diffSig = sig;
+        renderTokenTable();
+      }
+      function flushPendingChgRender() {
+        if (!_pendingChgRender) return;
+        _pendingChgRender = false;
+        _diffSig = null;                            // force the rebuild
+        renderDiffStrip();
       }
       $('cta').onclick      = function() {
         var t = $('cta').getAttribute('data-act');
@@ -1520,10 +1890,14 @@
         }
         if (t) $(t).click();
       };
-      $('ghSync').onclick   = function() { $('syncvars').click(); };
-      $('ghPreview').onclick = function() { $('preview').click(); };
+      // W3 · the count is a control — tapping it toggles the changed-only filter.
+      $('ctaCount').onclick = function(e) {
+        e.stopPropagation();                        // never trigger the CTA's preview
+        if (hasBaseline && chgList.length) toggleChangedFilter();
+      };
+      $('chgFilterClear').onclick = function() { if (filterChanged) toggleChangedFilter(); };
+      $('ghSave').onclick   = function() { $('publishTokens').click(); };
       $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
-      $('ghReload').onclick = function() { $('reload').click(); };
 
       // ── designer-default intro (Part 8) + redeem/invite flows + re-openable help ──
       function escHtml(s) {
@@ -1543,6 +1917,9 @@
         $('view-tokens').style.display = 'none';
         $('view-storybook').style.display = 'none';
         $('view-settings').style.display = 'none';
+        $('view-tokens').classList.remove('active');
+        $('view-storybook').classList.remove('active');
+        $('view-settings').classList.remove('active');
       }
 
       // NB: the old applyIntroState() (paste↔invite stateful-primary juggling) is
@@ -1651,6 +2028,8 @@
         hideHeaderLabel();
         showView('tokens');
         updateCta();
+        renderIdleStatus(true);                   // W2 · seed the one-voice status line
+        refreshCommittedBaseline();               // unsaved-changes baseline (what's in the project)
       }
 
       function showOrgKeyFlow() {
@@ -2077,7 +2456,7 @@
       }
 
       // ── Reload from Figma ──────────────────────────────────────────────
-      $('reload').onclick = function() { post('reload-tokens'); };
+      $('reload').onclick = function() { post('reload-tokens'); maybeDriftCheck(true); };
 
       // ── Snapshot to project (Figma Variables → cloud token set) ─────────
       // Persists the working set as a versioned token set on the key's project
@@ -2087,11 +2466,11 @@
       // plugin's key (scoped to its own project server-side).
       $('publishTokens').onclick = async function() {
         var key = activeKey();
-        if (!key) return setStatus('Connect / sign in first — snapshotting needs your project key.', true);
+        if (!key) return setStatus('Connect / sign in first — saving needs your project key.', true);
         var names = Object.keys(tokenSet || {});
-        if (!names.length) return setStatus('No tokens to snapshot.', true);
+        if (!names.length) return setStatus('No tokens to save.', true);
         var base = activeCloudBase();
-        setStatus('Snapshotting ' + names.length + ' tokens…');
+        setStatus('Saving ' + names.length + ' tokens to your project…');
         try {
           var res = await fetch(base + '/api/plugin/publish-tokens', {
             method: 'POST',
@@ -2101,14 +2480,18 @@
           var j = {};
           try { j = await res.json(); } catch (e) { j = {}; }
           if (res.ok && j && j.ok) {
-            setStatus('Snapshotted ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
+            setStatus('Saved ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
+            // the project now matches the working set → baseline = what we just saved
+            committedTokens = JSON.parse(JSON.stringify(tokenSet));
+            lsSet(LS.savedBaseline, JSON.stringify(tokenSet));
+            renderTokenTable(); updateCta();
           } else {
             var msg = (j && (j.message || j.error)) || ('HTTP ' + res.status);
             if (res.status === 401) msg = 'not authorized — sign in / reconnect';
-            setStatus('Snapshot failed: ' + msg, true);
+            setStatus('Save failed: ' + msg, true);
           }
         } catch (e) {
-          setStatus('Snapshot failed: ' + ((e && e.message) || 'network') , true);
+          setStatus('Save failed: ' + ((e && e.message) || 'network') , true);
         }
       };
 
@@ -2175,12 +2558,9 @@
         return copied;
       }
       function appendReceiptBtn(snippet) {
-        var btn = document.createElement('button');
-        btn.className = 'receipt-btn'; btn.textContent = 'Copy receipt';
-        btn.onclick = function() {
-          copyReceipt(snippet).then(function(ok) { btn.textContent = ok ? 'Copied!' : 'Copy failed'; btn.disabled = true; });
-        };
-        $('status').appendChild(btn);
+        // W2 one-voice status line — the receipt copy button is retired (the
+        // preview tab has already opened by the time the receipt lands).
+        // copyReceipt itself stays: the invite flow + 404 guide use it.
       }
 
       // ── Preview-app resolution (founder rule 2026-08-11) ───────────────
@@ -2239,7 +2619,10 @@
         }
 
         // Path (1) — the developer's app is up → live preview on it.
-        setStatus('Posting preview…');
+        // W2 busy voice — name the delta the user cares about (full body is still
+        // pushed; see the delta-push deviation note in the spec).
+        var chgN = hasBaseline ? chgList.length : Object.keys(tokenSet).length;
+        setStatus('○ Pushing ' + chgN + ' changed token' + (chgN === 1 ? '' : 's') + '…');
         try {
           var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
@@ -2255,13 +2638,13 @@
           hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           livePreviewId = d.id;
-          updateCta();                              // session live → CTA becomes Open PR
+          updateCta();                              // session live → Open PR unlocks (preview never moves the changes baseline)
           var url = target.url + (target.url.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Preview ready: ' + d.id });
-          setStatus('Preview <b>' + d.id + '</b> created. <a href="' + url + '" target="_blank">Open app ↗</a>' +
-            ($('autoSync').checked ? ' — live editing on.' : '.'));
-          appendReceiptBtn(buildReceiptSnippet(Object.keys(tokenSet).length, sbRows ? sbRows.length : 0));
+          // ok voice — "Preview" kept in the string (onboarding step-4 sniffs it)
+          setStatus('● Preview live · ' + chgN + ' token' + (chgN === 1 ? '' : 's') + ' pushed · just now' +
+            ($('autoSync').checked ? ' — live editing on.' : ''));
         } catch(e) { setStatus('Preview failed: ' + e.message, true); }
       };
 
@@ -2271,7 +2654,7 @@
         var sbUrl  = $('storybookUrl').value.trim().replace(/\/$/, '');
         if (!origin) return setStatus('Set Bridge origin in Settings.', true);
         if (!sbUrl)  return setStatus('Set Storybook URL in Settings.', true);
-        setStatus('Posting preview…');
+        setStatus('○ Pushing tokens to Storybook…');
         try {
           var res = await bfetch(origin + '/preview', {
             method: 'POST', headers: { 'content-type': 'text/plain' },
@@ -2286,6 +2669,7 @@
           lsSet(LS.lastTokenIds, JSON.stringify(Object.keys(tokenSet).sort()));
           hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
+          updateCta();                              // preview is a pure look — baseline untouched
           var url = sbUrl + (sbUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Storybook preview: ' + d.id });
@@ -2597,25 +2981,46 @@
       function renderTokenTable() {
         var body = $('tkBody');
         body.innerHTML = '';
+        refreshChanges();                         // so buildRow can tint changed rows
+
+        // W3 · changed-only filter bar visibility tracks the filter state
+        var fb = $('chgFilterBar');
+        if (fb) fb.hidden = !filterChanged;
+
+        // W2 · search (replaces the Filter chips) — matches name or value
+        var q = (tokenQuery || '').toLowerCase();
+        function matchesQuery(n) {
+          if (!q) return true;
+          return n.toLowerCase().indexOf(q) !== -1 ||
+            String(tokenSet[n] === undefined ? '' : tokenSet[n]).toLowerCase().indexOf(q) !== -1;
+        }
 
         var hasFilter = Object.keys(tokenFilters).length > 0;
         var names = Object.keys(tokenSet);
         if (hasFilter) names = names.filter(function(n) { return !!tokenFilters[groupOf(n)]; });
+        names = names.filter(matchesQuery);
+        // the changed rows render in their own pinned group (pull-up variant);
+        // removed tokens (in the baseline, gone from the set) get a row too, so
+        // the group count always matches the CTA's "N changes".
+        var chgNames = chgList.filter(function(n) { return matchesQuery(n); });
+        names = names.filter(function(n) { return !chgSet[n]; });
+        if (filterChanged) names = [];            // W3: changed-only view
         names.sort(function(a, b) {
           var ra = tierRank(a), rb = tierRank(b);
           if (ra !== rb) return ra - rb;
           return a < b ? -1 : a > b ? 1 : 0;
         });
 
-        if (!names.length) {
+        if (!names.length && !chgNames.length) {
           var trE = document.createElement('tr');
           var tdE = document.createElement('td');
           tdE.colSpan = 4;
           var hasAny = Object.keys(tokenSet).length > 0;
           if (hasAny) {
-            // filtered, no match
-            tdE.appendChild(buildEmptyState('⊘', 'No tokens match the filter',
-              'Clear the filter chips to see all tokens.', null, null));
+            // searched/filtered, no match
+            tdE.appendChild(buildEmptyState('⊘', 'No tokens match',
+              q ? 'Nothing matches “' + tkEscape(tokenQuery) + '” — clear the search to see all tokens.'
+                : 'Clear the filter to see all tokens.', null, null));
           } else if (!lsGet(LS.origin)) {
             // never configured → open the Connect overlay at step 1
             tdE.appendChild(buildEmptyState('◎', 'Connect your project',
@@ -2646,6 +3051,7 @@
         // Extracted so both the tier-grouped and type-grouped paths share it.
         function buildRow(name) {
           var tr = document.createElement('tr');
+          tr.tabIndex = 0;                        // W2 row diet: actions reveal on hover/focus-within
 
           var tdIcon = document.createElement('td');
           tdIcon.className = 'tk-col-icon';
@@ -2679,6 +3085,17 @@
           input.className = 'tk-val';
           input.setAttribute('aria-label', name + ' value');
           input.value = tokenSet[name];
+          if (chgSet[name]) {
+            input.classList.add('chg');           // info-blue: changed since last preview
+            // "was <old>" hint — the delta readable in place (W2)
+            if (committedTokens && committedTokens[name] !== undefined) {
+              tdVal.className = 'tk-val-cell';
+              var was = document.createElement('span');
+              was.className = 'tk-was';
+              was.textContent = 'was ' + committedTokens[name];
+              tdVal.appendChild(was);
+            }
+          }
           input.oninput = (function(rowName, iconCell, inputEl) {
             return function() {
               var raw = inputEl.value;
@@ -2689,6 +3106,7 @@
                 inputEl.title = '';
                 iconCell.innerHTML = iconCellHtml(rowName, raw);
                 onTokenEdit();
+                inputEl.classList.toggle('chg', !!chgSet[rowName]);  // onTokenEdit refreshed chgSet
               } else {
                 inputEl.classList.add('invalid');
                 inputEl.title = 'Invalid ' + t.toLowerCase() + ' value';
@@ -2726,6 +3144,41 @@
           htr.innerHTML = '<td colspan="4"><span>' + tkEscape(label) + '</span>'
             + '<span class="tk-tier-badge">' + count + '</span></td>';
           body.appendChild(htr);
+        }
+
+        // W2 · CHANGED group — pinned first, info-blue, same header anatomy as the
+        // type groups. The header is tappable (W3: toggles the changed-only filter).
+        if (chgNames.length) {
+          var ctr = document.createElement('tr');
+          ctr.className = 'tk-tier-head chg';
+          ctr.setAttribute('role', 'button');
+          ctr.title = filterChanged ? 'Show all tokens' : 'Show only the unsaved changes';
+          ctr.innerHTML = '<td colspan="4"><span>Changed · unsaved</span>'
+            + '<span class="tk-tier-badge">' + chgNames.length + '</span></td>';
+          ctr.onclick = toggleChangedFilter;
+          body.appendChild(ctr);
+          for (var ci = 0; ci < chgNames.length; ci++) {
+            var cn = chgNames[ci];
+            if (tokenSet[cn] !== undefined) { body.appendChild(buildRow(cn)); continue; }
+            // removed since last preview — no live value to edit
+            var rtr = document.createElement('tr');
+            var rIcon = document.createElement('td'); rIcon.className = 'tk-col-icon';
+            rIcon.innerHTML = iconCellHtml(cn, (committedTokens && committedTokens[cn]) || '');
+            rtr.appendChild(rIcon);
+            var rName = document.createElement('td');
+            var rSpan = document.createElement('span'); rSpan.className = 'tk-name'; rSpan.textContent = cn;
+            rName.appendChild(rSpan); rtr.appendChild(rName);
+            var rVal = document.createElement('td'); rVal.className = 'tk-val-cell';
+            if (committedTokens && committedTokens[cn] !== undefined) {
+              var rw = document.createElement('span'); rw.className = 'tk-was';
+              rw.textContent = 'was ' + committedTokens[cn]; rVal.appendChild(rw);
+            }
+            var rem = document.createElement('span'); rem.className = 'tk-removed';
+            rem.textContent = '(removed)'; rVal.appendChild(rem);
+            rtr.appendChild(rVal);
+            var rAct = document.createElement('td'); rAct.className = 'tk-col-action'; rtr.appendChild(rAct);
+            body.appendChild(rtr);
+          }
         }
 
         // Grouping (C2). A real resolved tier map still wins (unchanged behavior).
@@ -2915,7 +3368,7 @@
       $('graftToggle').onclick = function() {
         graftOpen = !graftOpen;
         $('graftBody').hidden = !graftOpen;
-        $('graftToggleLabel').textContent = graftOpen ? 'Graft a theme ▾' : 'Graft a theme ▸';
+        $('graftToggleLabel').textContent = graftOpen ? 'Apply a theme ▾' : 'Apply a theme ▸';
         if (graftOpen) loadGraftComponents();
       };
 
@@ -3113,37 +3566,11 @@
         rawEditTimer = setTimeout(applyRawFromText, 300);
       });
 
-      // ── filter chips (§5) — view-only, mirrors storybook renderChips() ───
+      // ── W2: filter chips retired — the toolbar SEARCH replaces them. The chip
+      // machinery (tokenFilters/tokenFilterOpen) stays inert; #tkFilters stays hidden.
       function renderTokenChips() {
         var box = $('tkFilters');
-        box.innerHTML = '';
-        if (rawOpen) { box.hidden = true; return; }              // raw editor replaces the table view
-        var groups = tokenGroups();
-        if (groups.length <= 1) { box.hidden = true; return; }   // hidden if one group
-        box.hidden = false;
-
-        var filterChip = document.createElement('span');
-        filterChip.className = 'tk-chip' + (tokenFilterOpen ? ' active' : '');
-        filterChip.textContent = 'Filter';
-        filterChip.onclick = function() {
-          tokenFilterOpen = !tokenFilterOpen;
-          if (!tokenFilterOpen) tokenFilters = {};   // collapsing clears the filter
-          renderTokenChips(); renderTokenTable();
-        };
-        box.appendChild(filterChip);
-
-        if (!tokenFilterOpen) return;                // groups hidden until expanded
-
-        groups.forEach(function(group) {
-          var chip = document.createElement('span');
-          chip.className = 'tk-chip' + (tokenFilters[group] ? ' active' : '');
-          chip.textContent = group;
-          chip.onclick = function() {
-            if (tokenFilters[group]) delete tokenFilters[group]; else tokenFilters[group] = true;
-            renderTokenChips(); renderTokenTable();
-          };
-          box.appendChild(chip);
-        });
+        if (box) { box.innerHTML = ''; box.hidden = true; }
       }
 
       // ── raw editor toggle (</>) (§6) ─────────────────────────────────────
@@ -3153,12 +3580,11 @@
         rawOpen = !rawOpen;
         $('tkRawWrap').hidden = !rawOpen;
         $('tkTableWrap').hidden = rawOpen;
-        var gp = $('graftPanel'); if (gp) gp.hidden = rawOpen;   // hide graft with the table (U3 · P4)
-        $('tkRaw').classList.toggle('active', rawOpen);
+        var gp = $('graftPanel'); if (gp) gp.hidden = rawOpen || !graftShown;   // W2: tile lives behind the ⋯ menu
+        var rawBtn = $('tkRaw'); if (rawBtn) rawBtn.classList.toggle('active', rawOpen);  // moved to Settings → Advanced
         if (rawOpen) { $('tkFilters').hidden = true; syncRawFromSet(); }  // serialize set into the editor
         else renderTokenChips();                   // restore correct chip visibility
       }
-      $('tkRaw').onclick = toggleRaw;
 
       // ── post-mutation hook (called by the table on edit + delete) ────────
       function onTokenEdit() {
@@ -3183,6 +3609,7 @@
             body: buildPreviewBody(tokenSet, darkTokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
+          updateCta();
           setStatus('Live preview updated (' + Object.keys(tokenSet).length + ' tokens).');
         } catch (e) { setStatus('Live preview update failed: ' + e.message, true); }
       }
@@ -3340,14 +3767,69 @@
         });
       }
 
+      // §7 · Components 404 → a guided two-step (frame C). The bridge answering 404
+      // for /artifacts is EXPECTED before the first `sorb-seed capture` — so it's a
+      // next step, not an error. Copyable command + Refresh; a warn (not danger) banner.
+      function showSbGuide(on) {
+        $('sbGuide').hidden = !on;
+        $('sbTableWrap').hidden = on;
+        if (on) { $('sbFilters').hidden = true; $('sbBulk').hidden = true; }
+      }
+      function render404Guide() {
+        var g = $('sbGuide'); g.innerHTML = '';
+        var wrap = document.createElement('div'); wrap.className = 'empty-state';
+        var icon = document.createElement('div'); icon.className = 'es-icon';
+        var mark = document.createElement('span'); mark.className = 'es-mark';
+        mark.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>';
+        icon.appendChild(mark); wrap.appendChild(icon);
+        var head = document.createElement('div'); head.className = 'es-head';
+        head.textContent = 'Capture your components once, insert them forever';
+        wrap.appendChild(head);
+        var body = document.createElement('div'); body.className = 'es-body';
+        body.textContent = 'Sorb inserts your real Storybook stories as Figma frames. Two steps:';
+        wrap.appendChild(body);
+        var steps = document.createElement('div'); steps.className = 'es-steps';
+        var s1 = document.createElement('div'); s1.className = 'es-step';
+        var n1 = document.createElement('span'); n1.className = 'es-num'; n1.textContent = '1';
+        s1.appendChild(n1);
+        s1.appendChild(document.createTextNode('In your project, run'));
+        var cmd = document.createElement('button'); cmd.className = 'es-cmd'; cmd.type = 'button';
+        var cmdText = 'npx sorb-seed capture';
+        cmd.appendChild(document.createTextNode(cmdText));
+        var cp = document.createElement('span'); cp.className = 'cp'; cp.textContent = '⧉'; cmd.appendChild(cp);
+        cmd.onclick = function() {
+          copyReceipt(cmdText).then(function(ok) {
+            if (!ok) return;
+            cmd.classList.add('copied'); cp.textContent = '✓';
+            setTimeout(function() { cmd.classList.remove('copied'); cp.textContent = '⧉'; }, 1500);
+          });
+        };
+        s1.appendChild(cmd); steps.appendChild(s1);
+        var s2 = document.createElement('div'); s2.className = 'es-step';
+        var n2 = document.createElement('span'); n2.className = 'es-num'; n2.textContent = '2';
+        s2.appendChild(n2);
+        s2.appendChild(document.createTextNode('Then'));
+        var rf = document.createElement('button'); rf.className = 'es-refresh'; rf.type = 'button';
+        rf.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>Refresh';
+        rf.onclick = loadStories;
+        s2.appendChild(rf); s2.appendChild(document.createTextNode('here.'));
+        steps.appendChild(s2); wrap.appendChild(steps);
+        var warn = document.createElement('div'); warn.className = 'warn-banner';
+        warn.innerHTML = '<b>Nothing captured yet</b> (the bridge answered 404). That&rsquo;s expected before the first capture — it&rsquo;s step 1 above, not an error to fix.';
+        wrap.appendChild(warn);
+        g.appendChild(wrap);
+      }
+
       // ── Load story list (auto on storybook tab switch) ─────────────────
       function loadStories() {
         var origin = trimOrigin();
         if (!origin) return setSbStatus('Set Bridge origin in Settings.', true);
+        showSbGuide(false);
         setSbStatus('Loading…');
         bfetch(origin + '/artifacts')
           .then(function(res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 404 ? ' — run `sorb-seed capture` first' : ''));
+            if (res.status === 404) { var e404 = new Error('not-captured'); e404.notCaptured = true; throw e404; }
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.json();
           })
           .then(function(idx) {
@@ -3376,7 +3858,17 @@
               setSbStatus(ids.length + ' captured stor' + (ids.length === 1 ? 'y' : 'ies') + ' loaded.');
             }
           })
-          .catch(function(e) { setSbStatus('Failed to load stories: ' + e.message, true); sbRows = []; renderTable(); });
+          .catch(function(e) {
+            sbRows = [];
+            if (e && e.notCaptured) {              // §7 · expected-before-first-capture → guided two-step
+              setSbStatus('');
+              render404Guide();
+              showSbGuide(true);
+            } else {
+              renderTable();
+              setSbStatus('Failed to load stories: ' + e.message, true);
+            }
+          });
       }
       $('loadStories').onclick = loadStories;
 
@@ -3651,6 +4143,9 @@
         label.textContent = r.label;
         var ts = lsGet(LS.lastVerifiedAt);
         pill.title = r.title || (ts ? ('Last verified: ' + new Date(ts).toLocaleString()) : 'Bridge connection status');
+        // W2 · the pill is CSS-hidden; its state feeds the one-voice status line.
+        // The 5s conn poll that lands here doubles as the "verified X ago" refresher.
+        renderIdleStatus(false);
       }
 
       function connOrigin() {
@@ -3995,7 +4490,7 @@
       connStartPoll();
 
       // hide the provenance hovercard when the token table scrolls (U3 · F5)
-      $('tkTableWrap').addEventListener('scroll', hideHovercard);
+      $('listwrap').addEventListener('scroll', hideHovercard);   // W2: the outer listwrap scrolls now
 
       // Re-entry: a returning user with an unreachable bridge (red pill) jumps
       // straight to step 1 (not the intro). (U3 · reconciled to A's 4-state pill.)
@@ -4024,18 +4519,11 @@
         return changed[0] + ', ' + changed[1] + ', ' + changed[2] + ' and ' + (changed.length - 3) + ' others changed since last verify';
       }
       function showDriftBanner(text, currentHash) {
-        var existing = document.getElementById('driftBanner');
-        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-        var bar = document.createElement('div'); bar.id = 'driftBanner'; bar.className = 'drift-banner';
-        var msg = document.createElement('span'); msg.className = 'drift-banner-msg'; msg.textContent = text;
-        var x = document.createElement('button'); x.className = 'drift-banner-dismiss';
-        x.setAttribute('aria-label', 'Dismiss drift warning'); x.textContent = '×';
-        x.onclick = function() {
-          try { sessionStorage.setItem('sorb_drift_dismissed_' + currentHash, '1'); } catch (e) {}
-          if (bar.parentNode) bar.parentNode.removeChild(bar);
-        };
-        bar.appendChild(msg); bar.appendChild(x);
-        $('tabs').insertAdjacentElement('afterend', bar);     // full-width, under tabs, above active view
+        // W2 · one status voice: drift is the WARN state of the status line, not
+        // a banner. Per-hash dismissal is preserved via the same sessionStorage
+        // key (the caller already checks it before invoking).
+        try { sessionStorage.setItem('sorb_drift_dismissed_' + currentHash, '1'); } catch (e) {}
+        setStatusLine('warn', '● Drift: ' + escHtml(text) + ' — Sync to review');
       }
       (function driftCheckOnOpen() {
         if (lsGet(LS.onb) !== 'true') return;                 // never behind the intro's hidden tabs
