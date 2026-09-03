@@ -11,6 +11,9 @@
         --blaze:#F26722; --blaze-ink:#B14712; --blaze-bg:#FBE7DA;
         --ok:#2E7A4E; --ok-bg:#E4F0E9; --err:#C0341D;
         --warn:#B8860B; --warn-on-dark:#E7C9A9;
+        /* info-blue status role (PV-6, 2026-09-03): pending/changed/FYI. Orange is
+           brand+action ONLY, never a status message. */
+        --info-ink:#2A5AA0; --info-bg:#EEF4FB; --info-line:#B9D1EC;
         --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,monospace;
         --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
         font-family:var(--sans); font-size:12px;
@@ -199,9 +202,33 @@
         font-size:11px; font-family:var(--mono); }
       .sec-actions { display:flex; gap:6px; margin-top:8px; }
       .ghost { flex:1; border:1px solid var(--line); background:var(--surface); border-radius:7px;
-        padding:6px 4px; font-size:10.5px; color:var(--ink-2); text-align:center; font-weight:550; }
+        padding:6px 4px; font-size:10.5px; color:var(--ink-2); text-align:center; font-weight:550;
+        display:inline-flex; align-items:center; justify-content:center; gap:5px; }
       .ghost:hover:not([disabled]) { border-color:var(--taupe); }
       .ghost[disabled] { color:var(--taupe); opacity:.7; cursor:default; }
+      .ghost.off[disabled] { opacity:.45; }   /* handoff: gated PR reads as clearly inert */
+      .ghost .gh-mark { width:12px; height:12px; flex:none; }
+      /* diff strip — "N changed since your last preview", above the CTA (frame B) */
+      .diffbox { border:1px solid var(--line); border-radius:9px; background:var(--surface-2);
+        overflow:hidden; margin-bottom:9px; }
+      .diffh { padding:5px 10px; font-size:10px; font-weight:700; text-transform:uppercase;
+        letter-spacing:.04em; color:var(--soft); background:var(--surface);
+        border-bottom:1px solid var(--line-2); }
+      .diffrows { max-height:96px; overflow-y:auto; }
+      .diffr { display:flex; align-items:center; gap:7px; padding:5px 10px;
+        font:500 10.5px var(--mono); color:var(--ink); }
+      .diffr + .diffr { border-top:1px solid var(--line-2); }
+      .diffr .dsw { width:12px; height:12px; border-radius:4px; border:1px solid rgba(0,0,0,.08); flex:none; }
+      .diffr .dnm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .diffr .darr { color:var(--taupe); flex:none; }
+      .diffr em { color:var(--soft); font-style:italic; }
+      /* why-row — the reason a control is inert (never disable without saying why) */
+      .whyrow { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px;
+        font-size:11px; font-weight:500; color:var(--soft); text-align:center; line-height:1.4; }
+      .whyrow[hidden] { display:none; }   /* explicit display beats the UA [hidden] rule */
+      .whyrow .lock { width:11px; height:11px; flex:none; }
+      .whyrow a { color:var(--blaze-ink); text-decoration:none; cursor:pointer; font-weight:600; }
+      .whyrow a:hover { text-decoration:underline; }
 
       /* ── views ─────────────────────────────────────────────────────── */
       .view { display: none; padding: 14px; }
@@ -352,6 +379,9 @@
         width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 11px;
         padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px;
       }
+      /* changed-since-last-preview — info-blue status (NOT brand orange). Declared
+         before .invalid so an invalid edit's red border always wins. */
+      .tk-val.chg { color: var(--info-ink); background: var(--info-bg); border-color: var(--info-line); }
       .tk-val.invalid { border-color: var(--err); }
       .tk-name {
         font-family: ui-monospace, Menlo, monospace; font-size: 11px;
@@ -664,6 +694,36 @@
       }
       .empty-state .es-cta:hover { background: var(--blaze-ink); }
 
+      /* ── Components 404 → guided two-step (frame C) ──────────────────── */
+      .es-steps { display:grid; gap:8px; text-align:left; margin:2px auto 0; max-width:320px; }
+      .es-step { display:flex; align-items:center; gap:9px; font-size:11.5px; color:var(--ink-2);
+        line-height:1.4; }
+      .es-num { width:19px; height:19px; border-radius:50%; background:var(--surface-2);
+        border:1px solid var(--line); color:var(--soft); display:inline-flex; align-items:center;
+        justify-content:center; font-size:10px; font-weight:800; flex:none; }
+      .es-cmd { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono);
+        font-size:10.5px; background:var(--ink); color:#fff; border-radius:7px; padding:6px 10px;
+        cursor:pointer; border:none; }
+      .es-cmd:hover { background:#000; }
+      .es-cmd .cp { opacity:.7; }
+      .es-cmd.copied { background:var(--ok); }
+      .es-refresh { flex:0 0 auto; width:auto; min-width:0; padding:5px 12px; font-size:11px;
+        border:1px solid var(--line); background:var(--surface); color:var(--ink-2); border-radius:6px;
+        display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+      .es-refresh:hover { border-color:var(--taupe); }
+      /* warn banner (not danger) — "expected before first capture" */
+      .warn-banner { margin:12px 0 4px; background:#FBF0E2; border:1px solid #F0DCC0;
+        color:var(--warn); border-radius:8px; padding:8px 10px; font-size:11px; line-height:1.5; }
+      .warn-banner b { color:var(--warn); }
+      /* Settings one-release "moved" note (frame D) */
+      .moved-note { margin-top:8px; background:var(--blaze-bg); color:var(--blaze-ink);
+        border-radius:8px; padding:8px 10px; font-size:11px; line-height:1.5; }
+      .moved-note b { color:var(--blaze-ink); }
+      /* Settings connected mini-pill on the Advanced summary */
+      .synced-pill { display:inline-flex; align-items:center; gap:4px; font-size:9.5px; font-weight:600;
+        color:var(--ok); background:var(--ok-bg); border-radius:999px; padding:2px 8px; margin-left:6px; }
+      .synced-pill[hidden] { display:none; }   /* explicit display beats the UA [hidden] rule */
+
       /* ── U3 · Settings inline Test ───────────────────────────────────── */
       .set-field-row { display: flex; gap: 6px; align-items: stretch; }
       .set-field-row input { flex: 1; }
@@ -871,15 +931,12 @@
         <span class="hint" id="darkModeBadge" hidden style="font-weight:600;" title="Both Light and Dark values push together; live app preview toggles.">🌗&nbsp;Light + Dark detected — previews will toggle</span>
         <div class="tk-head-right">
           <span class="hint" style="font-weight:400;cursor:pointer;">
-            <input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
+            <input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 4px 0 0;vertical-align:middle;cursor:pointer;" />Auto-sync from Figma<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span>
           </span>
           <button class="tk-raw-btn" id="ghReload" title="Reload from Figma Variables" aria-label="Reload tokens from Figma Variables">
             <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
           </button>
-          <button class="tk-raw-btn" id="tkRaw" title="Raw JSON editor" aria-label="Toggle raw JSON editor">
-            <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
-          </button>
-          <button class="tk-raw-btn" id="publishTokens" title="Snapshot the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Snapshot tokens to project" style="width:auto;padding:0 8px;font-weight:600;">Snapshot&nbsp;→</button>
+          <button class="tk-raw-btn" id="publishTokens" title="Save the current tokens to your project — they'll appear in the dashboard Token Explorer" aria-label="Save tokens to project" style="width:auto;padding:0 8px;font-weight:600;">Save to project&nbsp;→</button>
         </div>
       </div>
 
@@ -902,7 +959,7 @@
       <!-- ── graft picker (U3 · P4) — copy a source component's theme onto a target ── -->
       <div class="graft" id="graftPanel">
         <button class="graft-toggle" id="graftToggle" type="button">
-          <span id="graftToggleLabel">Graft a theme ▸</span>
+          <span id="graftToggleLabel">Apply a theme ▸</span>
         </button>
         <div class="graft-body" id="graftBody" hidden>
           <div class="graft-row">
@@ -938,16 +995,25 @@
       <div class="receipt" id="status" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
 
       <div class="foot">
+        <!-- diff strip — the changes the CTA count refers to, listed above it (frame B).
+             Populated by renderDiffStrip(); hidden when nothing has changed since the
+             last preview. -->
+        <div class="diffbox" id="diffBox" hidden>
+          <div class="diffh" id="diffBoxHead"></div>
+          <div class="diffrows" id="diffBoxRows"></div>
+        </div>
         <button class="cta" id="cta">
           <span id="ctaLabel">Load from App</span><span class="n" id="ctaCount" hidden></span>
         </button>
-        <!-- C3 · the redundant "Load from App" ghost is dropped — the giant foot
-             CTA above is the single load path. Sync Variables + Open PR remain. -->
+        <!-- shown only when the CTA is disabled (previewed, nothing changed). -->
+        <div class="whyrow" id="ctaWhy" hidden>Nothing changed since your last preview</div>
+        <!-- ONE Preview verb (the CTA). Secondary actions: durable save + Open PR. -->
         <div class="sec-actions">
-          <button class="ghost" id="ghPreview">Preview</button>
-          <button class="ghost" id="ghSync">Sync Variables</button>
+          <button class="ghost" id="ghSave">Save to project&nbsp;→</button>
           <button class="ghost off" id="ghPr" disabled>Open PR</button>
         </div>
+        <!-- the reason Open PR is inert (never disable without saying why). -->
+        <div class="whyrow" id="prWhy" hidden></div>
       </div>
     </div>
 
@@ -964,6 +1030,9 @@
       </div>
 
       <div class="sb-filters" id="sbFilters" hidden></div>
+
+      <!-- §7 · the 404 dead-end becomes a guided two-step (built by render404Guide). -->
+      <div id="sbGuide" hidden></div>
 
       <div class="sb-table-wrap" id="sbTableWrap">
         <table class="sb-table" id="sbTable">
@@ -1003,12 +1072,15 @@
         <p class="settings-note" style="margin:6px 0 0;">Manage your org, keys &amp; billing in the dashboard. Log out clears this plugin&rsquo;s saved connection.</p>
       </div>
 
-      <p class="settings-note">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
+      <!-- copy swaps to "Connected via your invite — nothing to fill in." once a
+           connection is saved (set in refreshSettingsConnState). -->
+      <p class="settings-note" id="settingsConnNote">Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.</p>
 
       <!-- Part 8 · the technical fields collapse into an "Advanced" disclosure (closed by
-           default). Input ids are unchanged, so all persistence / activeKey() wiring holds. -->
+           default). Input ids are unchanged, so all persistence / activeKey() wiring holds.
+           The "✓ synced from your invite" pill appears when a connection exists. -->
       <details class="adv" id="advSettings">
-        <summary class="adv-sum">Advanced setup <span class="adv-hint">— enter the bridge, app, and key by hand</span></summary>
+        <summary class="adv-sum">Advanced setup <span class="adv-hint" id="advHint">— bridge, app &amp; key</span><span class="synced-pill" id="advSyncedPill" hidden>&#10003; synced from your invite</span></summary>
         <div class="adv-body">
           <label for="origin">Bridge origin <span class="hint">(where <code>sorb dev</code> is reachable)</span></label>
           <div class="set-field-row">
@@ -1032,6 +1104,18 @@
 
           <label for="apiKey">API key <span class="hint">(hosted bridge only — a read-only <code>sorb_pk_</code>; leave blank for local <code>sorb dev</code>)</span></label>
           <input id="apiKey" placeholder="sorb_pk_… (blank for localhost)" />
+
+          <!-- relocated low-key capabilities (previously top-level toolbar buttons) -->
+          <div class="adv-relocated" style="margin-top:12px;border-top:1px solid var(--line-2);padding-top:10px;display:grid;gap:8px;">
+            <div>
+              <button class="set-test-btn" id="advSyncVars" type="button" style="width:auto;padding:5px 12px;">Sync Variables into Figma</button>
+              <span class="hint" style="display:block;margin-top:4px;">Creates/updates Figma Variables from the bridge&rsquo;s resolved tokens.</span>
+            </div>
+            <div>
+              <button class="set-test-btn" id="advRawJson" type="button" style="width:auto;padding:5px 12px;">Raw JSON editor</button>
+              <span class="hint" style="display:block;margin-top:4px;">Edit the working token set as JSON on the Tokens tab.</span>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -1041,11 +1125,9 @@
         <span class="hint">(wrap each insert in a named frame)</span>
       </label>
 
-      <div class="settings-reset" id="figmaRefSection" style="margin-top:14px;">
-        <button class="secondary" id="figmaExportBtn" type="button">Export variables to bridge</button>
-        <p class="settings-note" style="margin:8px 0 0;">Sends this file&rsquo;s Figma Variables to the bridge, then checks them against your DTCG tokens (flags drift — never overwrites either side).</p>
-        <div class="receipt" id="figmaExportStatus" data-state="empty" role="status" aria-live="polite" aria-atomic="true"></div>
-      </div>
+      <!-- §6 · "Export variables to bridge" moved into Sync on the Tokens tab.
+           One-release note so anyone who relied on the button knows where it went. -->
+      <div class="moved-note" id="movedNote" style="margin-top:14px;"><b>Moved:</b> &ldquo;Export variables to bridge&rdquo; now runs as part of Sync on the Tokens tab — the drift check happens on every sync, not from a settings button.</div>
 
       <div class="settings-reset">
         <button class="reset-btn" id="resetBtn" type="button">Reset settings</button>
@@ -1080,6 +1162,8 @@
         }
         // auto-load stories when switching to storybook tab
         if (key === 'storybook') loadStories();
+        // keep Settings' connected-state copy fresh whenever it's shown
+        if (key === 'settings' && typeof refreshSettingsConnState === 'function') refreshSettingsConnState();
       }
 
       $('tb-nav-tokens').onclick   = function() { showView('tokens'); };
@@ -1091,7 +1175,7 @@
       // for a success receipt (preview pushed/created, synced, loaded, ✓), neutral
       // otherwise; empty message collapses the band entirely.
       function statusIsSuccess(html) {
-        return /✓|\bcreated\b|\bpushed\b|\bsynced\b|\bupdated\b|\bloaded\b|\bready\b/i.test(String(html));
+        return /✓|\bcreated\b|\bpushed\b|\bsynced\b|\bupdated\b|\bloaded\b|\bready\b|\bsaved\b/i.test(String(html));
       }
       function setStatus(html, isErr) {
         var el = $('status');
@@ -1107,16 +1191,6 @@
         el.className = 'status' + (isErr ? ' err' : '');
         el.innerHTML = html;
       }
-      // Same receipt-band pattern as setStatus(), scoped to the Settings
-      // "Export variables to bridge" section.
-      function setFigmaExportStatus(html, isErr) {
-        var el = $('figmaExportStatus');
-        if (!el) return;
-        var empty = !html || String(html).trim() === '';
-        var state = empty ? 'empty' : (isErr ? 'err' : (statusIsSuccess(html) ? 'ok' : 'neutral'));
-        el.setAttribute('data-state', state);
-        el.innerHTML = empty ? '' : '<span class="receipt-msg">' + html + '</span>';
-      }
 
       // ── persisted settings ─────────────────────────────────────────────
       var LS = { origin: 'sorb.origin', app: 'sorb.appUrl', gh: 'sorb.githubUrl', sb: 'sorb.storybookUrl', auto: 'sorb.autoSync', label: 'sorb.labelInserts',
@@ -1128,6 +1202,11 @@
       LS.lastComponentCount = 'sorb.lastComponentCount';
       LS.lastTokenIds       = 'sorb.lastTokenIds';
       LS.lastTokenSnapshot  = 'sorb.lastTokenSnapshot';
+      // Baseline for the "N changes" the Preview CTA promises: a name→value map of
+      // the working set at the last successful preview push. Distinct from
+      // lastTokenSnapshot (which is the committed-vs-bridge drift axis). Empty until
+      // the first preview → the count then reads the total token load.
+      LS.lastPreviewedMap   = 'sorb.lastPreviewedMap';
       // Part 8 · handshake — set once a developer invite has been pasted (Advanced-only
       // now; the front-door primary is account sign-in, not this flag).
       LS.hasHandshake       = 'sorb.hasHandshake';
@@ -1197,12 +1276,13 @@
         $('githubUrl').value    = lsGet(LS.gh)     || DEFAULT_GH;
         $('storybookUrl').value = lsGet(LS.sb)     || DEFAULT_SB;
         $('apiKey').value       = lsGet(LS.apiKey);
+        refreshSettingsConnState();
       }
       syncSettingsInputs();
 
       $('origin').addEventListener('change',       function(e) { lsSet(LS.origin, e.target.value); });
       $('appUrl').addEventListener('change',       function(e) { lsSet(LS.app,    e.target.value); });
-      $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); });
+      $('githubUrl').addEventListener('change',    function(e) { lsSet(LS.gh,     e.target.value); updateCta(); });   // Open PR gate depends on the saved GitHub url
       $('storybookUrl').addEventListener('change', function(e) { lsSet(LS.sb,     e.target.value); });
       $('apiKey').addEventListener('change',       function(e) { lsSet(LS.apiKey, e.target.value.trim()); });
 
@@ -1240,17 +1320,25 @@
       // UI POSTs it to the bridge and immediately checks it against the
       // committed DTCG tokens. Diffs only FLAG drift — neither side is ever
       // auto-resolved from this flow.
-      $('figmaExportBtn').onclick = function() {
-        $('figmaExportBtn').disabled = true;
-        setFigmaExportStatus('Collecting Figma Variables…');
-        post('sorb-export-variables');
-      };
+      // §6 · One sync story. "Export variables to bridge" is no longer a Settings
+      // button — the same round-trip (export this file's Variables → bridge, then
+      // check them against the committed DTCG tokens; flags only, never resolves)
+      // now piggybacks on Sync: fired on a manual Reload, and (throttled) on
+      // auto-sync. Result surfaces in the Tokens status band, not a separate one.
+      var lastDriftCheckAt = 0, DRIFT_THROTTLE_MS = 5 * 60 * 1000;
+      function maybeDriftCheck(force) {
+        if (lsGet(LS.demo) === 'true') return;    // read-only pk → /tokens/figma would 403
+        if (!trimOrigin()) return;                // no bridge yet
+        var now = new Date().getTime();
+        if (!force && (now - lastDriftCheckAt) < DRIFT_THROTTLE_MS) return;
+        lastDriftCheckAt = now;
+        post('sorb-export-variables');            // → code.js collects → sorb-export-result → postFigmaExport
+      }
 
       function postFigmaExport(artifact) {
         var o = trimOrigin();
         var n = (artifact && artifact.tokens && artifact.tokens.length) || 0;
-        if (!o) { setFigmaExportStatus('Set a bridge origin first (Advanced setup).', true); return; }
-        setFigmaExportStatus(n + ' variable(s) collected — sending to bridge…');
+        if (!o) return;                           // background check — stay quiet on a missing origin
         bfetch(o + '/tokens/figma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1260,19 +1348,14 @@
           return bfetch(o + '/verify/figma');
         }).then(function(res) { return res.json(); })
         .then(function(body) {
-          if (body && body.error) {
-            setFigmaExportStatus('Exported ' + n + ' — verify unavailable: ' + escHtml(body.error), true);
-            return;
-          }
+          if (body && body.error) return;         // verify unavailable — leave the loaded receipt as-is
           var driftCount = (body.mismatches ? body.mismatches.length : 0) + (body.missingInFigma ? body.missingInFigma.length : 0);
           if (body.ok) {
-            setFigmaExportStatus('✓ Exported ' + n + ' — matches your DTCG tokens (' + body.matched + '/' + body.checked + ').');
+            setStatus('✓ ' + n + ' tokens from Figma Variables · in sync · drift-checked');
           } else {
-            setFigmaExportStatus('Exported ' + n + ' — ' + driftCount + ' drift flag(s) vs your DTCG tokens (' + body.matched + '/' + body.checked + ' matched).', true);
+            setStatus(n + ' tokens · ' + driftCount + ' drift flag(s) vs your DTCG tokens (' + body.matched + '/' + body.checked + ' matched).', true);
           }
-        }).catch(function(e) {
-          setFigmaExportStatus('Export failed: ' + escHtml(e && e.message), true);
-        });
+        }).catch(function(e) { /* background check — silent on transient failure */ });
       }
 
       // U3 — flat-Settings inline Test (reuses testConnection; §3 honesty labels).
@@ -1289,6 +1372,21 @@
       }
       wireSettingsTest('origin', 'originTest', 'originResult', 'health');
       wireSettingsTest('appUrl', 'appTest',   'appResult',    'ping');
+
+      // §8 · relocated capabilities (previously top-level toolbar buttons).
+      $('advSyncVars').onclick = function() { showView('tokens'); $('syncvars').click(); };
+      $('advRawJson').onclick  = function() { showView('tokens'); if (!rawOpen) toggleRaw(); };
+
+      // §8 · reflect the connection state in Settings copy: once connected, the
+      // hand-entry paragraph flips to a reassurance and Advanced shows a synced pill.
+      function refreshSettingsConnState() {
+        var connected = isConnectedState();
+        var note = $('settingsConnNote');
+        if (note) note.textContent = connected
+          ? 'Connected via your invite — nothing to fill in.'
+          : 'Most people connect by pasting an invite from a developer. These fields are only for setting Sorb up by hand.';
+        var pill = $('advSyncedPill'); if (pill) pill.hidden = !connected;
+      }
 
       // Label toggle (default ON — only false when explicitly saved as 'no').
       $('labelToggle').checked = lsGet(LS.label) !== 'no';
@@ -1383,12 +1481,34 @@
       var dirty = false;            // raw editor has unsaved edits
       var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
 
+      // ── changes-since-last-preview model (§1) ───────────────────────────
+      // Drives the CTA count, the diff strip, and the .chg row tint. Reuses
+      // diffTokens() (the drift-banner differ). Baseline = LS.lastPreviewedMap;
+      // when unset (never previewed) hasBaseline is false and the count falls back
+      // to the total token load. NOTE (accepted limit): compares tokenSet only —
+      // darkTokenSet changes are not counted here.
+      var chgList = [], chgSet = {}, hasBaseline = false, _snapRaw = null, _snapObj = null;
+      function refreshChanges() {
+        var raw = lsGet(LS.lastPreviewedMap);
+        if (raw !== _snapRaw) {                     // memoize the parse
+          _snapRaw = raw;
+          try { _snapObj = raw ? JSON.parse(raw) : null; } catch (e) { _snapObj = null; }
+        }
+        if (_snapObj == null) { chgList = []; chgSet = {}; hasBaseline = false; return; }
+        hasBaseline = true;
+        chgList = diffTokens(raw, tokenSet);        // sorted changed names (adds/removes incl.)
+        chgSet = {};
+        for (var i = 0; i < chgList.length; i++) chgSet[chgList[i]] = true;
+      }
+      function markPreviewed() { lsSet(LS.lastPreviewedMap, JSON.stringify(tokenSet)); }
+
       function applyTokens(tokens, darkTokens, hasDark, isAuto) {
         darkTokenSet = (darkTokens && Object.keys(darkTokens).length) ? darkTokens : null;
         hasDarkMode = !!hasDark;
         renderDarkModeBadge();
         setTokenSet(tokens, { silent: true });
         setStatus(Object.keys(tokens).length + ' token(s) loaded from Figma Variables' + (isAuto ? ' (auto).' : '.'));
+        if (isAuto) maybeDriftCheck(false);       // §6 · throttled drift check on the sync path (never per 1.5s poll)
       }
 
       // ── dark-mode indicator (dark-mode-phase3 P3.2, minimal) — a one-line
@@ -1420,9 +1540,7 @@
         } else if (msg.type === 'sorb-verify') {
           verifyInsert(msg.storyId, msg.bbox, msg.meta);
         } else if (msg.type === 'sorb-export-result') {
-          if ($('figmaExportBtn')) $('figmaExportBtn').disabled = false;
-          if (!msg.ok) { setFigmaExportStatus('Export failed: ' + escHtml(msg.error), true); }
-          else postFigmaExport(msg.artifact);
+          if (msg.ok) postFigmaExport(msg.artifact);   // §6 · background drift check; silent on failure
         } else if (msg.type === 'sorb-restore') {
           hydrateFromRestore(msg.data);   // durable settings from clientStorage
           syncSettingsInputs();
@@ -1470,45 +1588,110 @@
       // live-session state; the hidden proxy buttons (#committed/#preview/#openpr/
       // #syncvars/#reload) stay the handler home, so the §2 contracts are
       // unchanged — the new chrome only clicks them.
+      // ONE Preview verb: the CTA never advances to a terminal "Open PR" state — it
+      // loads, then stays Preview. Open PR is a separate, always-visible secondary.
       function ctaState() {
         if (!Object.keys(tokenSet).length) return 'load';
-        if (!livePreviewId) return 'preview';
-        return 'openpr';                          // #openpr surfaced as the CTA terminal state
+        return 'preview';
+      }
+      // Open-PR gate — the TRUE causes (read the SAVED github url, not the DEFAULT_GH
+      // prefilled input): 'github' (no tokens file connected) | 'session' (nothing
+      // previewed yet) | null (unlocked). GitHub gate wins — it can't self-resolve.
+      function openPrGate() {
+        if (!lsGet(LS.gh).trim()) return 'github';
+        if (!livePreviewId) return 'session';
+        return null;
       }
       function updateCta() {
         var cta = $('cta');
         if (!cta) return;                         // defensive (teardown / unload)
         var label = $('ctaLabel'), count = $('ctaCount');
+        refreshChanges();
         // Demo mode uses a read-only pk (writes 403) — no editing; the CTA opens the
-        // pre-seeded hosted preview, and the write-oriented ghosts are disabled.
+        // pre-seeded hosted preview, and the write-oriented secondaries are disabled.
         if (lsGet(LS.demo) === 'true') {
           label.textContent = 'Open the live demo'; count.hidden = true;
-          cta.setAttribute('data-act', 'demo');
-          $('ghSync').disabled = true;
+          cta.disabled = false; cta.setAttribute('data-act', 'demo');
+          $('ctaWhy').hidden = true;
+          $('ghSave').disabled = true;
           $('ghPr').disabled = true; $('ghPr').classList.add('off');
-          $('ghPreview').disabled = true;   // demo CTA itself opens the seeded preview
+          setPrWhy('Demo mode is read-only — PRs are disabled.');
+          renderDiffStrip();
           return;
         }
-        $('ghSync').disabled = false;
         var st = ctaState(), n = Object.keys(tokenSet).length;
+        cta.disabled = false; $('ctaWhy').hidden = true;
         if (st === 'load') {
           label.textContent = 'Load from App'; count.hidden = true;
           cta.setAttribute('data-act', 'committed');
-        } else if (st === 'preview') {
+        } else {                                  // 'preview' — the only other state
           label.textContent = 'Preview in app';
-          count.textContent = n; count.hidden = (n === 0);
           cta.setAttribute('data-act', 'preview');
-        } else {
-          label.textContent = 'Open PR';
-          count.textContent = n; count.hidden = (n === 0);
-          cta.setAttribute('data-act', 'openpr');
+          if (!hasBaseline) {                     // never previewed → count = total load
+            count.textContent = String(n); count.hidden = (n === 0);
+          } else if (chgList.length === 0) {      // previewed, nothing changed → inert + why
+            count.hidden = true;
+            cta.disabled = true; $('ctaWhy').hidden = false;
+          } else {                                // previewed, N changed
+            count.textContent = chgList.length + (chgList.length === 1 ? ' change' : ' changes');
+            count.hidden = false;
+          }
         }
-        $('ghPr').disabled = !livePreviewId;      // Open-PR ghost live only with a session
-        $('ghPr').classList.toggle('off', !livePreviewId);
-        // Preview ghost: always available once tokens are loaded, so the flow is no
-        // longer one-way — you can re-push / re-open the preview even after the CTA
-        // has advanced to its terminal "Open PR" state (livePreviewId set).
-        $('ghPreview').disabled = (n === 0);
+        // Save to project needs a working set.
+        $('ghSave').disabled = (n === 0);
+        // Open PR — true-cause gating + why-row.
+        var gate = openPrGate();
+        $('ghPr').disabled = !!gate;
+        $('ghPr').classList.toggle('off', !!gate);
+        if (gate === 'github') {
+          setPrWhy('Open PR unlocks when GitHub is connected — <a id="prConnect">Connect →</a>');
+        } else if (gate === 'session') {
+          setPrWhy('Open PR unlocks after a preview — it opens the change you previewed.');
+        } else {
+          setPrWhy('');
+        }
+        renderDiffStrip();
+      }
+      // why-row for Open PR (html allowed — copy is authored, not user data).
+      function setPrWhy(html) {
+        var el = $('prWhy'); if (!el) return;
+        if (!html) { el.hidden = true; el.innerHTML = ''; return; }
+        el.hidden = false;
+        el.innerHTML = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg><span>' + html + '</span>';
+        var c = document.getElementById('prConnect');
+        // TODO: once the connect payload carries a project id, deep-link
+        // <cloudBase>/dashboard/projects/<id>/connectors instead of Settings.
+        if (c) c.onclick = function() { showView('settings'); var a = $('advSettings'); if (a) a.open = true; var g = $('githubUrl'); if (g) g.focus(); };
+      }
+      // Diff strip — lists the changes the CTA count refers to. Rows via
+      // createElement/textContent (values are user data). Signature-guarded so the
+      // 1.5s auto-poll doesn't churn the DOM (stable screenshots).
+      var _diffSig = null;
+      function renderDiffStrip() {
+        var box = $('diffBox'); if (!box) return;
+        var show = lsGet(LS.demo) !== 'true' && ctaState() === 'preview' && hasBaseline && chgList.length > 0;
+        if (!show) { box.hidden = true; box.removeAttribute('data-sig'); _diffSig = null; return; }
+        var sig = chgList.map(function(k){ return k + '' + tokenSet[k]; }).join('');
+        if (sig === _diffSig) { box.hidden = false; return; }   // unchanged → no rebuild
+        _diffSig = sig;
+        box.hidden = false;
+        $('diffBoxHead').textContent = chgList.length + ' changed since your last preview';
+        var rows = $('diffBoxRows'); rows.innerHTML = '';
+        for (var i = 0; i < chgList.length; i++) {
+          var name = chgList[i], oldVal = _snapObj[name], newVal = tokenSet[name];
+          var isColor = inferType(newVal !== undefined ? newVal : (oldVal !== undefined ? oldVal : '')) === 'COLOR';
+          var r = document.createElement('div'); r.className = 'diffr';
+          if (isColor && oldVal !== undefined) { var so = document.createElement('span'); so.className = 'dsw'; so.style.background = oldVal; r.appendChild(so); }
+          var nm = document.createElement('span'); nm.className = 'dnm'; nm.textContent = name; r.appendChild(nm);
+          var ar = document.createElement('span'); ar.className = 'darr'; ar.textContent = '→'; r.appendChild(ar);
+          if (isColor && newVal !== undefined) { var sn = document.createElement('span'); sn.className = 'dsw'; sn.style.background = newVal; r.appendChild(sn); }
+          var vv = document.createElement('span');
+          if (newVal === undefined) { var em = document.createElement('em'); em.textContent = '(removed)'; vv.appendChild(em); }
+          else if (oldVal === undefined) { vv.textContent = newVal; var em2 = document.createElement('em'); em2.textContent = ' (new)'; vv.appendChild(em2); }
+          else vv.textContent = newVal;
+          r.appendChild(vv);
+          rows.appendChild(r);
+        }
       }
       $('cta').onclick      = function() {
         var t = $('cta').getAttribute('data-act');
@@ -1520,8 +1703,7 @@
         }
         if (t) $(t).click();
       };
-      $('ghSync').onclick   = function() { $('syncvars').click(); };
-      $('ghPreview').onclick = function() { $('preview').click(); };
+      $('ghSave').onclick   = function() { $('publishTokens').click(); };
       $('ghPr').onclick     = function() { if (!$('ghPr').disabled) $('openpr').click(); };
       $('ghReload').onclick = function() { $('reload').click(); };
 
@@ -2077,7 +2259,7 @@
       }
 
       // ── Reload from Figma ──────────────────────────────────────────────
-      $('reload').onclick = function() { post('reload-tokens'); };
+      $('reload').onclick = function() { post('reload-tokens'); maybeDriftCheck(true); };
 
       // ── Snapshot to project (Figma Variables → cloud token set) ─────────
       // Persists the working set as a versioned token set on the key's project
@@ -2087,11 +2269,11 @@
       // plugin's key (scoped to its own project server-side).
       $('publishTokens').onclick = async function() {
         var key = activeKey();
-        if (!key) return setStatus('Connect / sign in first — snapshotting needs your project key.', true);
+        if (!key) return setStatus('Connect / sign in first — saving needs your project key.', true);
         var names = Object.keys(tokenSet || {});
-        if (!names.length) return setStatus('No tokens to snapshot.', true);
+        if (!names.length) return setStatus('No tokens to save.', true);
         var base = activeCloudBase();
-        setStatus('Snapshotting ' + names.length + ' tokens…');
+        setStatus('Saving ' + names.length + ' tokens to your project…');
         try {
           var res = await fetch(base + '/api/plugin/publish-tokens', {
             method: 'POST',
@@ -2101,14 +2283,14 @@
           var j = {};
           try { j = await res.json(); } catch (e) { j = {}; }
           if (res.ok && j && j.ok) {
-            setStatus('Snapshotted ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
+            setStatus('Saved ' + j.count + ' tokens → “' + (j.tokenSetName || 'project') + '” (v' + j.version + '). Open the dashboard Token Explorer to see them.');
           } else {
             var msg = (j && (j.message || j.error)) || ('HTTP ' + res.status);
             if (res.status === 401) msg = 'not authorized — sign in / reconnect';
-            setStatus('Snapshot failed: ' + msg, true);
+            setStatus('Save failed: ' + msg, true);
           }
         } catch (e) {
-          setStatus('Snapshot failed: ' + ((e && e.message) || 'network') , true);
+          setStatus('Save failed: ' + ((e && e.message) || 'network') , true);
         }
       };
 
@@ -2255,7 +2437,8 @@
           hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
           livePreviewId = d.id;
-          updateCta();                              // session live → CTA becomes Open PR
+          markPreviewed();                          // §1 baseline → CTA count resets to 0
+          updateCta();                              // session live → Open PR unlocks
           var url = target.url + (target.url.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Preview ready: ' + d.id });
@@ -2286,6 +2469,7 @@
           lsSet(LS.lastTokenIds, JSON.stringify(Object.keys(tokenSet).sort()));
           hashTokenLatest(origin).then(function(h){ if (h) lsSet(LS.lastTokenHash, h); });
           postVerifyActivity();                     // U3 · Feature D — broadcast to teammates
+          markPreviewed(); updateCta();             // §1 baseline — a storybook preview is a preview of the same body
           var url = sbUrl + (sbUrl.includes('?') ? '&' : '?') + 'preview=' + d.id;
           window.open(url, '_blank');
           post('notify', { message: 'Storybook preview: ' + d.id });
@@ -2597,6 +2781,7 @@
       function renderTokenTable() {
         var body = $('tkBody');
         body.innerHTML = '';
+        refreshChanges();                         // so buildRow can tint changed rows
 
         var hasFilter = Object.keys(tokenFilters).length > 0;
         var names = Object.keys(tokenSet);
@@ -2679,6 +2864,7 @@
           input.className = 'tk-val';
           input.setAttribute('aria-label', name + ' value');
           input.value = tokenSet[name];
+          if (chgSet[name]) input.classList.add('chg');   // info-blue: changed since last preview
           input.oninput = (function(rowName, iconCell, inputEl) {
             return function() {
               var raw = inputEl.value;
@@ -2689,6 +2875,7 @@
                 inputEl.title = '';
                 iconCell.innerHTML = iconCellHtml(rowName, raw);
                 onTokenEdit();
+                inputEl.classList.toggle('chg', !!chgSet[rowName]);  // onTokenEdit refreshed chgSet
               } else {
                 inputEl.classList.add('invalid');
                 inputEl.title = 'Invalid ' + t.toLowerCase() + ' value';
@@ -2915,7 +3102,7 @@
       $('graftToggle').onclick = function() {
         graftOpen = !graftOpen;
         $('graftBody').hidden = !graftOpen;
-        $('graftToggleLabel').textContent = graftOpen ? 'Graft a theme ▾' : 'Graft a theme ▸';
+        $('graftToggleLabel').textContent = graftOpen ? 'Apply a theme ▾' : 'Apply a theme ▸';
         if (graftOpen) loadGraftComponents();
       };
 
@@ -3154,11 +3341,10 @@
         $('tkRawWrap').hidden = !rawOpen;
         $('tkTableWrap').hidden = rawOpen;
         var gp = $('graftPanel'); if (gp) gp.hidden = rawOpen;   // hide graft with the table (U3 · P4)
-        $('tkRaw').classList.toggle('active', rawOpen);
+        var rawBtn = $('tkRaw'); if (rawBtn) rawBtn.classList.toggle('active', rawOpen);  // moved to Settings → Advanced
         if (rawOpen) { $('tkFilters').hidden = true; syncRawFromSet(); }  // serialize set into the editor
         else renderTokenChips();                   // restore correct chip visibility
       }
-      $('tkRaw').onclick = toggleRaw;
 
       // ── post-mutation hook (called by the table on edit + delete) ────────
       function onTokenEdit() {
@@ -3183,6 +3369,8 @@
             body: buildPreviewBody(tokenSet, darkTokenSet),
           });
           if (!res.ok) throw new Error('HTTP ' + res.status);
+          markPreviewed();                          // §1 the live preview now reflects the edit → 0 changes
+          updateCta();
           setStatus('Live preview updated (' + Object.keys(tokenSet).length + ' tokens).');
         } catch (e) { setStatus('Live preview update failed: ' + e.message, true); }
       }
@@ -3340,14 +3528,69 @@
         });
       }
 
+      // §7 · Components 404 → a guided two-step (frame C). The bridge answering 404
+      // for /artifacts is EXPECTED before the first `sorb-seed capture` — so it's a
+      // next step, not an error. Copyable command + Refresh; a warn (not danger) banner.
+      function showSbGuide(on) {
+        $('sbGuide').hidden = !on;
+        $('sbTableWrap').hidden = on;
+        if (on) { $('sbFilters').hidden = true; $('sbBulk').hidden = true; }
+      }
+      function render404Guide() {
+        var g = $('sbGuide'); g.innerHTML = '';
+        var wrap = document.createElement('div'); wrap.className = 'empty-state';
+        var icon = document.createElement('div'); icon.className = 'es-icon';
+        var mark = document.createElement('span'); mark.className = 'es-mark';
+        mark.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>';
+        icon.appendChild(mark); wrap.appendChild(icon);
+        var head = document.createElement('div'); head.className = 'es-head';
+        head.textContent = 'Capture your components once, insert them forever';
+        wrap.appendChild(head);
+        var body = document.createElement('div'); body.className = 'es-body';
+        body.textContent = 'Sorb inserts your real Storybook stories as Figma frames. Two steps:';
+        wrap.appendChild(body);
+        var steps = document.createElement('div'); steps.className = 'es-steps';
+        var s1 = document.createElement('div'); s1.className = 'es-step';
+        var n1 = document.createElement('span'); n1.className = 'es-num'; n1.textContent = '1';
+        s1.appendChild(n1);
+        s1.appendChild(document.createTextNode('In your project, run'));
+        var cmd = document.createElement('button'); cmd.className = 'es-cmd'; cmd.type = 'button';
+        var cmdText = 'npx sorb-seed capture';
+        cmd.appendChild(document.createTextNode(cmdText));
+        var cp = document.createElement('span'); cp.className = 'cp'; cp.textContent = '⧉'; cmd.appendChild(cp);
+        cmd.onclick = function() {
+          copyReceipt(cmdText).then(function(ok) {
+            if (!ok) return;
+            cmd.classList.add('copied'); cp.textContent = '✓';
+            setTimeout(function() { cmd.classList.remove('copied'); cp.textContent = '⧉'; }, 1500);
+          });
+        };
+        s1.appendChild(cmd); steps.appendChild(s1);
+        var s2 = document.createElement('div'); s2.className = 'es-step';
+        var n2 = document.createElement('span'); n2.className = 'es-num'; n2.textContent = '2';
+        s2.appendChild(n2);
+        s2.appendChild(document.createTextNode('Then'));
+        var rf = document.createElement('button'); rf.className = 'es-refresh'; rf.type = 'button';
+        rf.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>Refresh';
+        rf.onclick = loadStories;
+        s2.appendChild(rf); s2.appendChild(document.createTextNode('here.'));
+        steps.appendChild(s2); wrap.appendChild(steps);
+        var warn = document.createElement('div'); warn.className = 'warn-banner';
+        warn.innerHTML = '<b>Nothing captured yet</b> (the bridge answered 404). That&rsquo;s expected before the first capture — it&rsquo;s step 1 above, not an error to fix.';
+        wrap.appendChild(warn);
+        g.appendChild(wrap);
+      }
+
       // ── Load story list (auto on storybook tab switch) ─────────────────
       function loadStories() {
         var origin = trimOrigin();
         if (!origin) return setSbStatus('Set Bridge origin in Settings.', true);
+        showSbGuide(false);
         setSbStatus('Loading…');
         bfetch(origin + '/artifacts')
           .then(function(res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 404 ? ' — run `sorb-seed capture` first' : ''));
+            if (res.status === 404) { var e404 = new Error('not-captured'); e404.notCaptured = true; throw e404; }
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.json();
           })
           .then(function(idx) {
@@ -3376,7 +3619,17 @@
               setSbStatus(ids.length + ' captured stor' + (ids.length === 1 ? 'y' : 'ies') + ' loaded.');
             }
           })
-          .catch(function(e) { setSbStatus('Failed to load stories: ' + e.message, true); sbRows = []; renderTable(); });
+          .catch(function(e) {
+            sbRows = [];
+            if (e && e.notCaptured) {              // §7 · expected-before-first-capture → guided two-step
+              setSbStatus('');
+              render404Guide();
+              showSbGuide(true);
+            } else {
+              renderTable();
+              setSbStatus('Failed to load stories: ' + e.message, true);
+            }
+          });
       }
       $('loadStories').onclick = loadStories;
 
