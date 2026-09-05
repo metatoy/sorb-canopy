@@ -56,6 +56,7 @@
       .stxt a:hover { text-decoration:underline; }
       .hdr.busy .stxt, .hdr.neutral .stxt { color:var(--soft); }
       .hdr.warn .stxt { color:var(--warn); }
+      .hdr.info .stxt { color:var(--info-ink); }
       .hdr.err .stxt { color:var(--err); }
       /* the old pill + teammate voice fold into the status line (one voice) */
       .conn-pill { display:none !important; }
@@ -998,6 +999,7 @@
         <div class="moremenu" id="moreMenu" hidden>
           <label class="mm-item"><input type="checkbox" id="autoSync" aria-label="Auto-sync tokens from Figma Variables" style="width:auto;margin:0 6px 0 0;" />Auto-sync from Figma<span id="freshDot" class="fresh-dot" data-fresh="off" title="Auto-sync freshness"></span></label>
           <button class="mm-item" id="mmSyncNow" type="button">Sync from Figma now</button>
+          <button class="mm-item" id="mmReloadProject" type="button">Reload from project</button>
           <button class="mm-item" id="mmApplyTheme" type="button">Apply a theme&nbsp;›</button>
           <button class="mm-item" id="mmViewCode" type="button">View code&nbsp;<span class="mono" style="font-size:10px;">&lt;/&gt;</span></button>
           <button class="mm-item" id="mmSyncVars" type="button">Sync Variables into Figma</button>
@@ -1284,6 +1286,16 @@
           _stTransient = { kind: '', at: 0 };
           return;
         }
+        // Sticky cloud-update nudge — the project has newer tokens but the working
+        // set has unsaved edits, so we never auto-clobber. Re-asserted each idle
+        // cycle (info-blue, one voice) until the user clicks Load or saves.
+        if (cloudUpdateAvailable) {
+          setStatusLine('info', 'New tokens on the project — <a id="stCloudLoad">Load</a>');
+          var clLink = document.getElementById('stCloudLoad');
+          if (clLink) clLink.onclick = function() { loadFromProject({ auto: true }); };
+          _stTransient = { kind: '', at: 0 };     // don't self-hold — re-render freely each cycle
+          return;
+        }
         var st = ($('connPill') && $('connPill').getAttribute('data-state')) || 'disconnected';
         if (st === 'green-live' || st === 'green-stale') {
           var ts = lsGet(LS.lastVerifiedAt);
@@ -1495,6 +1507,9 @@
         e.stopPropagation();
         var m = $('moreMenu'), open = m.hidden;
         m.hidden = !open;
+        // Reload-from-project is a project read → disabled in demo mode (read-only
+        // pk, static demo tokens), mirroring the write-item gating elsewhere.
+        var rp = $('mmReloadProject'); if (rp) rp.disabled = (lsGet(LS.demo) === 'true');
         $('moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
       };
       document.addEventListener('click', function(e) {
@@ -1507,7 +1522,10 @@
         if (e.key === 'Escape') { var m = $('moreMenu'); if (m && !m.hidden) { m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); } }
       });
       function closeMoreMenu() { var m = $('moreMenu'); if (m) m.hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); }
-      $('mmSyncNow').onclick    = function() { closeMoreMenu(); $('reload').click(); };
+      // One affordance, both sources: Figma variables first, then the project's
+      // cloud tokens (auto-load if clean, nudge if there are unsaved edits).
+      $('mmSyncNow').onclick    = function() { closeMoreMenu(); $('reload').click(); syncCloudAfterFigma(); };
+      $('mmReloadProject').onclick = function() { closeMoreMenu(); loadFromProject(); };
       $('mmViewCode').onclick   = function() { closeMoreMenu(); toggleRaw(); };
       $('mmSyncVars').onclick   = function() { closeMoreMenu(); $('syncvars').click(); };
       var graftShown = false;   // W2 · the Apply-a-theme tile appears only via the ⋯ menu
@@ -1631,6 +1649,16 @@
       var mirroring = false;        // guards the textarea input listener from set→raw loops
       var dirty = false;            // raw editor has unsaved edits
       var pendingAuto = null;       // buffered auto update awaiting an explicit Refresh
+      // ── cloud token-refresh detection (QA · feat/qa-token-refresh) ──────
+      // The cloud fetch used to be one-shot at boot, so tokens added on the
+      // project (app.sorbcloud.com) never appeared until close/reopen. These
+      // drive a piggyback diff on the existing 5s conn poll.
+      var lastCloudHash = null;         // digest of the currently-LOADED cloud head; null = no baseline yet
+      var cloudUpdateAvailable = false; // sticky: project head differs AND we have unsaved edits (nudge, don't clobber)
+      var cloudCheckTick = 0;           // successful-poll counter (check cloud every 3rd ≈ 15s)
+      var cloudCheckInFlight = false;   // guards against overlapping background checks
+      var saveInFlight = false;         // a Save-to-project POST is in flight
+      var previewPushInFlight = false;  // a live-preview PUT is in flight
 
       // ── unsaved-changes model (fix 2026-09-03) ──────────────────────────
       // Drives the CTA count, the CHANGED group, and the .chg row tint.
@@ -2471,6 +2499,7 @@
         if (!names.length) return setStatus('No tokens to save.', true);
         var base = activeCloudBase();
         setStatus('Saving ' + names.length + ' tokens to your project…');
+        saveInFlight = true;                       // pause the background cloud-refresh check
         try {
           var res = await fetch(base + '/api/plugin/publish-tokens', {
             method: 'POST',
@@ -2484,6 +2513,9 @@
             // the project now matches the working set → baseline = what we just saved
             committedTokens = JSON.parse(JSON.stringify(tokenSet));
             lsSet(LS.savedBaseline, JSON.stringify(tokenSet));
+            // our save IS the new project head → realign drift baseline + drop any nudge
+            try { lastCloudHash = await digestHex(stableStringify(tokenSet)); } catch (e) {}
+            cloudUpdateAvailable = false;
             renderTokenTable(); updateCta();
           } else {
             var msg = (j && (j.message || j.error)) || ('HTTP ' + res.status);
@@ -2492,6 +2524,8 @@
           }
         } catch (e) {
           setStatus('Save failed: ' + ((e && e.message) || 'network') , true);
+        } finally {
+          saveInFlight = false;
         }
       };
 
@@ -2513,19 +2547,35 @@
       };
 
       // ── Load committed tokens (→ working set) ──────────────────────────
-      $('committed').onclick = async function() {
+      // THE load action — used by the "Load from App" CTA, the ⋯ "Reload from
+      // project" item, boot, and the background auto-detect. opts.auto → the
+      // "updated from project" status voice; opts.silent → no status on failure
+      // (background paths must not spam errors from a transient network blip).
+      async function loadFromProject(opts) {
+        opts = opts || {};
         var origin = trimOrigin();
-        if (!origin) return setStatus('Set Bridge origin in Settings.', true);
+        if (!origin) { if (!opts.silent) setStatus('Set Bridge origin in Settings.', true); return false; }
         try {
           var res = await bfetch(origin + '/tokens/latest');
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var json = await res.json();
           setTokenSet(json, { silent: true });
           committedTokens = JSON.parse(JSON.stringify(json));   // baseline snapshot (hovercard diff)
-          setStatus('Loaded committed tokens from the bridge.');
+          var n = Object.keys(json).length;
+          // Align the drift baseline so a just-loaded head never re-triggers the
+          // auto-detect / nudge, and clear any pending nudge (we're now current).
+          lastCloudHash = await digestHex(stableStringify(json));
+          cloudUpdateAvailable = false;
+          if (opts.auto) setStatus('● Updated from project · ' + n + ' token' + (n === 1 ? '' : 's'));
+          else setStatus('Loaded committed tokens from the bridge.');
           loadResolved(origin);                                 // background: fills resolvedGraph + resolvedMap
-        } catch(e) { setStatus('Failed to load committed tokens: ' + e.message, true); }
-      };
+          return true;
+        } catch(e) {
+          if (!opts.silent) setStatus('Failed to load committed tokens: ' + e.message, true);
+          return false;
+        }
+      }
+      $('committed').onclick = function() { loadFromProject(); };
 
       // Background fetch of the resolved token graph; populates BOTH resolvedGraph
       // (array, per-token .components — used by the hovercard + diff-drawer blast
@@ -3603,6 +3653,7 @@
 
       async function pushPreview() {
         if (!livePreviewId) return;
+        previewPushInFlight = true;                 // pause the background cloud-refresh check
         try {
           var res = await bfetch(trimOrigin() + '/preview/' + livePreviewId, {
             method: 'PUT', headers: { 'content-type': 'text/plain' },
@@ -3612,6 +3663,7 @@
           updateCta();
           setStatus('Live preview updated (' + Object.keys(tokenSet).length + ' tokens).');
         } catch (e) { setStatus('Live preview update failed: ' + e.message, true); }
+        finally { previewPushInFlight = false; }
       }
 
       // ── live session teardown (§7) — start lives in $('preview').onclick ─
@@ -4188,6 +4240,70 @@
         } catch (e) { return null; }
       }
 
+      // Stable, order-independent JSON of a token map — the input to the cloud
+      // drift digest. Sorted keys so key-order churn never reads as a change.
+      function stableStringify(obj) {
+        var keys = Object.keys(obj || {}).sort(), stable = {};
+        for (var i = 0; i < keys.length; i++) stable[keys[i]] = obj[keys[i]];
+        return JSON.stringify(stable);
+      }
+
+      // Unsaved-edit gate for the cloud auto-refresh: never clobber in-progress
+      // work. chgList = working-set diff vs the saved baseline; dirty = raw editor.
+      function hasUnsavedEdits() {
+        refreshChanges();
+        return (chgList && chgList.length > 0) || dirty;
+      }
+
+      // Piggyback the cloud head-diff on the existing conn poll (every 3rd tick).
+      // Clean working set → auto-load. Unsaved edits → info-blue nudge, no clobber.
+      // Silent on any failure — a background poll must never spam error status.
+      async function maybeCloudRefreshCheck() {
+        if (lsGet(LS.demo) === 'true') return;                 // demo pk is read-only + static
+        if (cloudCheckInFlight || saveInFlight || previewPushInFlight) return;
+        var origin = trimOrigin();
+        if (!origin) return;
+        cloudCheckInFlight = true;
+        try {
+          var res = await bfetch(origin + '/tokens/latest');
+          if (!res.ok) return;
+          var json = await res.json();
+          var h = await digestHex(stableStringify(json));
+          if (lastCloudHash === null) { lastCloudHash = h; return; }  // establish baseline, never trigger on first sight
+          if (h === lastCloudHash) return;                            // no change
+          if (hasUnsavedEdits()) {
+            lastCloudHash = h;                 // record the head we nudged about (don't re-nudge the SAME head)
+            cloudUpdateAvailable = true;
+            renderIdleStatus(true);            // surface the nudge now; renderIdleStatus keeps it sticky
+          } else {
+            await loadFromProject({ auto: true });   // clean → adopt it (loadFromProject resets lastCloudHash)
+          }
+        } catch (e) {
+          /* background check — silent on transient failure */
+        } finally {
+          cloudCheckInFlight = false;
+        }
+      }
+
+      // ⋯ "Sync from Figma now" cloud leg — pull the project too. Clean → adopt;
+      // unsaved edits → nudge (same no-clobber contract as the auto-detect).
+      function syncCloudAfterFigma() {
+        if (lsGet(LS.demo) === 'true') return;
+        if (!trimOrigin()) return;
+        if (hasUnsavedEdits()) {
+          cloudUpdateAvailable = true;
+          // record the current project head so the auto-detect doesn't re-nudge it
+          bfetch(trimOrigin() + '/tokens/latest')
+            .then(function(r){ return r.ok ? r.json() : null; })
+            .then(function(j){ if (j) return digestHex(stableStringify(j)); return null; })
+            .then(function(h){ if (h) lastCloudHash = h; })
+            .catch(function(e){ /* quiet */ });
+          renderIdleStatus(true);
+        } else {
+          loadFromProject({ auto: true });
+        }
+      }
+
       // On a fresh handshake connect there's no verify yet, so the pill would sit
       // at amber "not yet verified" — confusing right after a successful connect.
       // Attempt a real baseline verify: read the bridge's current token map and,
@@ -4257,6 +4373,10 @@
           .then(function(res) {
             clearTimeout(timeoutId);
             setConnState(res.ok);
+            if (res.ok) {                          // piggyback the cloud head-diff every 3rd poll (~15s)
+              cloudCheckTick++;
+              if (cloudCheckTick % 3 === 0) maybeCloudRefreshCheck();
+            }
           })
           .catch(function(e) {
             clearTimeout(timeoutId);
