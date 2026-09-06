@@ -11,6 +11,38 @@ both files directly.
 
 Full docs: <https://www.sorbcloud.com/docs/figma-plugin>.
 
+## Get the plugin
+
+The plugin is **not on the Figma Community yet**. During the beta you load it
+into **Figma desktop** as a development plugin — about three minutes, no
+build step. (The browser version of Figma cannot import development
+plugins.)
+
+1. **Get the files** — either way gives you a folder with `manifest.json`,
+   `code.js`, `ui.html`, `lib/` and `icons/`:
+   - Download the curated zip from the latest GitHub Release —
+     <https://github.com/metatoy/sorb-canopy/releases/latest/download/sorb-figma-plugin.zip> —
+     and unzip it somewhere you won't delete (Figma re-reads the folder every
+     time the plugin runs), **or**
+   - `git clone https://github.com/metatoy/sorb-canopy.git`.
+2. In Figma desktop, open any design file, then from the main menu choose
+   **Plugins → Development → Import plugin from manifest…**
+3. Select the `manifest.json` in that folder.
+4. Run it from **Plugins → Development → Sorb**. The panel opens at
+   **475 × 560** (`figma.showUI(__html__, { width: 475, height: 560 })` in
+   `code.js`) on the front door: **Sign in to connect**, **See it without
+   installing** (opens <https://try.sorbcloud.com>), and **Advanced setup**.
+
+**Updating:** download the new zip and replace the folder's contents at the
+same path — Figma picks the new files up the next time you run the plugin. If
+you unzipped to a new location, repeat step 2–3; the plugin `id` in
+`manifest.json` never changes, so Figma updates the existing Development
+entry instead of adding a second one.
+
+The zip is built by `npm run package` (`scripts/package.mjs`) and published
+by `.github/workflows/release.yml` on every `v*` tag. Step-by-step with
+troubleshooting: <https://www.sorbcloud.com/docs/figma-plugin/install>.
+
 ## How it's built
 
 The plugin sandbox splits into two halves that only talk over `postMessage`
