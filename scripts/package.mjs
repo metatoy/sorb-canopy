@@ -7,10 +7,11 @@
 //
 // Writes dist/sorb-figma-plugin.zip (the stable name the GitHub Release serves
 // at …/releases/latest/download/sorb-figma-plugin.zip) plus a versioned copy
-// dist/sorb-figma-plugin-v<version>.zip. The zip contains EXACTLY the files
-// Figma loads (manifest.json, code.js, ui.html, lib/token-mapping.js,
-// icons/*.svg) — no tests, tools, specs, community assets, .DS_Store or
-// __MACOSX folders — and every entry is a relative path rooted at the zip
+// dist/sorb-figma-plugin-v<version>.zip. The zip contains EXACTLY the curated
+// plugin set (manifest.json, code.js, ui.html, lib/token-mapping.js,
+// icons/*.svg — Figma itself loads only the first three; lib/ and icons/ ship
+// as the readable sources code.js/ui.html inline) — no tests, tools, specs,
+// community assets, .DS_Store or __MACOSX folders — and every entry is a relative path rooted at the zip
 // top level, so `manifest.json`'s `main` / `ui` resolve after a plain unzip.
 //
 // Uses the system `zip` (present on macOS + ubuntu-latest); no npm deps.
