@@ -835,16 +835,17 @@
            sandbox). "Paste an org key" is a small demoted fallback (existing keys / CI /
            headless). Self-host (invite-a-developer / paste-a-handshake / manual bridge /
            local-bridge discovery) moves under "Advanced setup" — still fully functional,
-           just buried. When the hosted demo injects at ship, the DEMO_ENABLED block
-           promotes #pathDemo above all (unchanged). -->
+           just buried. #pathDemo (2026-09-06) is the no-install tour: it opens
+           try.sorbcloud.com in the system browser. When the hosted demo injects at
+           ship, the DEMO_ENABLED block still promotes #pathDemo above all (unchanged). -->
       <div class="cards" id="introCards">
         <button class="card pri" id="pathSignIn">
           <div class="ct">Sign in to connect<span class="arw">&rarr;</span></div>
           <div class="cc">Opens your browser to sign in. Sorb connects automatically — no servers, URLs, or keys.</div>
         </button>
-        <button class="card coming" id="pathDemo" disabled tabindex="-1" aria-disabled="true">
-          <div class="ct">Try the live demo<span class="soon">Coming soon</span></div>
-          <div class="cc">One click — see Sorb live on a public demo app. No setup required.</div>
+        <button class="card sec" id="pathDemo" type="button">
+          <div class="ct">See it without installing<span class="arw">&rarr;</span></div>
+          <div class="cc">Walk the whole loop in your browser at try.sorbcloud.com — no account, no setup.</div>
         </button>
       </div>
 
@@ -891,9 +892,9 @@
       </details>
 
       <div class="links">
-        <a href="https://metatoy.com/sorb" target="_blank" rel="noopener">Learn more</a>
-        <a href="https://metatoy.com/sorb/docs" target="_blank" rel="noopener">Docs</a>
-        <a href="https://metatoy.com/sorb/beta" target="_blank" rel="noopener">Join the beta</a>
+        <a href="https://www.sorbcloud.com" target="_blank" rel="noopener">Learn more</a>
+        <a href="https://www.sorbcloud.com/docs" target="_blank" rel="noopener">Docs</a>
+        <a href="https://www.sorbcloud.com/beta" target="_blank" rel="noopener">Join the beta</a>
       </div>
     </div>
 
@@ -2454,9 +2455,21 @@
         });
       };
 
+      // "See it without installing" (2026-09-06) — the front door's second card opens the
+      // no-install tour in the system browser. Same mechanism as the footer links and
+      // "Preview in app": a plain window.open('…', '_blank') from the UI iframe, which
+      // Figma routes to the system browser (the code.js 'sorb-open-external' path is
+      // reserved for the sign-in host and rejects other origins). No key, no state.
+      var TRY_URL = 'https://try.sorbcloud.com';
+      $('pathDemo').onclick = function() {
+        window.open(TRY_URL, '_blank');
+        post('notify', { message: 'Opening try.sorbcloud.com…' });
+      };
+
       // "Try the live demo" — hosted demo path (U4). Lights up only when a read-only demo
       // key (DEMO_PK, from Keychain `sorb-publish-only`) AND the deployed demo-app origin
       // (DEMO_APP) are both set; both are injected at ship/deploy time, never committed.
+      // When enabled it re-binds #pathDemo below, overriding the tour link above.
       var DEMO_ENABLED = DEMO_PK !== '' && DEMO_APP !== '';
       if (DEMO_ENABLED) {
         // Demo is live → it becomes the confident solid-blaze primary (moved on top); the
