@@ -1,0 +1,41 @@
+# Publishes the curated plugin zip as a GitHub Release whenever a v* tag is
+# pushed. The tag must equal v<package.json version> (scripts/package.mjs
+# enforces it), so `…/releases/latest/download/sorb-figma-plugin.zip` always
+# serves the zip that matches the tagged source. Not a prerelease on purpose —
+# GitHub's `latest` alias skips prereleases.
+name: Release plugin zip
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test
+        run: npm test
+
+      - name: Package
+        run: node scripts/package.mjs --tag "${GITHUB_REF_NAME}"
+
+      - name: Verify zip contents
+        run: unzip -l dist/sorb-figma-plugin.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          prerelease: false
+          make_latest: true
